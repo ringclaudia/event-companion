@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <title>Event Companion</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #4f46e5;
+      --accent-light: #eef2ff;
+      --meeting: #3b82f6;
+      --session: #8b5cf6;
+      --booth: #f59e0b;
+      --team: #10b981;
+      --danger: #ef4444;
+      --nav-height: 64px;
+      --header-height: 56px;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ── Header ── */
+    header {
+      height: var(--header-height);
+      background: var(--accent);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    header .event-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 80px); }
+    header .event-meta { font-size: 11px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 80px); }
+    header .header-left { display: flex; flex-direction: column; min-width: 0; }
+    header .profile-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); border: none; color: white;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Main content area ── */
+    main {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .view {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      padding: 12px 16px 16px;
+      display: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .view.active { display: block; }
+
+    /* ── Bottom Nav ── */
+    nav {
+      height: var(--nav-height);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: stretch;
+      flex-shrink: 0;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    nav button {
+      flex: 1; border: none; background: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 3px;
+      color: var(--text-secondary); font-size: 10px; font-weight: 600;
+      transition: color 0.2s;
+    }
+    nav button.active { color: var(--accent); }
+    nav button svg { width: 22px; height: 22px; }
+
+    /* ── Schedule View ── */
+    .next-up {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: white; border-radius: var(--radius); padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .next-up-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 4px; }
+    .next-up-title { font-size: 16px; font-weight: 700; overflow-wrap: break-word; word-wrap: break-word; }
+    .next-up-detail { font-size: 12px; opacity: 0.9; margin-top: 4px; overflow-wrap: break-word; word-wrap: break-word; line-height: 1.4; }
+
+    .day-tabs {
+      display: flex; gap: 6px; margin-bottom: 10px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; padding-bottom: 2px;
+    }
+    .day-tabs::-webkit-scrollbar { display: none; }
+    .day-tab {
+      flex-shrink: 0; padding: 8px 16px; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--surface);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      color: var(--text-secondary); transition: all 0.2s;
+      white-space: nowrap; min-height: 44px;
+      display: flex; align-items: center;
+    }
+    .day-tab.active {
+      background: var(--accent); color: white; border-color: var(--accent);
+    }
+
+    .filters {
+      display: flex; gap: 6px; margin-bottom: 12px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+    .filter-chip {
+      flex-shrink: 0; padding: 8px 14px; border-radius: 16px;
+      border: 1.5px solid var(--border); background: var(--surface);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      color: var(--text-secondary); transition: all 0.2s;
+      white-space: nowrap; min-height: 40px;
+      display: flex; align-items: center;
+    }
+    .filter-chip.active { background: var(--text); color: white; border-color: var(--text); }
+    .filter-chip.person-chip { border-style: dashed; }
+    .filter-chip.person-chip.active { border-style: solid; background: var(--accent); border-color: var(--accent); color: white; }
+
+    .schedule-item {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 12px 14px; margin-bottom: 8px; box-shadow: var(--shadow);
+      border-left: 4px solid var(--border);
+      transition: transform 0.15s;
+    }
+    .schedule-item:active { transform: scale(0.985); }
+    .schedule-item.type-meeting { border-left-color: var(--meeting); }
+    .schedule-item.type-session { border-left-color: var(--session); }
+    .schedule-item.type-booth { border-left-color: var(--booth); }
+    .schedule-item.type-team { border-left-color: var(--team); }
+
+    .schedule-item .si-time { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+    .schedule-item .si-title { font-size: 14px; font-weight: 600; margin-top: 2px; overflow-wrap: break-word; word-wrap: break-word; }
+    .schedule-item .si-location { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+    .schedule-item .si-badges { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+    .si-badge {
+      font-size: 10px; font-weight: 600; padding: 2px 8px;
+      border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .si-badge.meeting { background: #dbeafe; color: var(--meeting); }
+    .si-badge.session { background: #ede9fe; color: var(--session); }
+    .si-badge.booth { background: #fef3c7; color: var(--booth); }
+    .si-badge.team { background: #d1fae5; color: var(--team); }
+    .si-badge.person { background: var(--bg); color: var(--text-secondary); }
+    .schedule-item .si-notes { font-size: 11px; color: var(--text-secondary); margin-top: 6px; font-style: italic; }
+    .schedule-item .si-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .si-add-cal {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: none; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 6px 10px; font-size: 11px; font-weight: 600;
+      color: var(--accent); cursor: pointer; min-height: 36px;
+      transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+      margin-left: auto;
+    }
+    .si-add-cal:active { background: var(--accent-light); border-color: var(--accent); }
+    .si-add-cal svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    .empty-state {
+      text-align: center; padding: 40px 20px; color: var(--text-secondary);
+    }
+    .empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.4; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── Key Players ── */
+    .search-bar {
+      position: relative; margin-bottom: 12px;
+    }
+    .search-bar input {
+      width: 100%; padding: 10px 14px 10px 38px; border-radius: var(--radius);
+      border: 1.5px solid var(--border); font-size: 14px; background: var(--surface);
+      outline: none; transition: border-color 0.2s;
+    }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar svg {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; color: var(--text-secondary);
+    }
+
+    .players-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    }
+    .player-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 16px 12px; text-align: center; box-shadow: var(--shadow);
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .player-card:active { transform: scale(0.97); box-shadow: var(--shadow-lg); }
+    .player-avatar {
+      width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700; color: white;
+      overflow: hidden;
+    }
+    .player-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .player-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+    .player-title { font-size: 11px; color: var(--text-secondary); margin-top: 2px; line-height: 1.3; }
+    .player-company { font-size: 11px; color: var(--accent); font-weight: 600; margin-top: 2px; }
+    .player-priority {
+      display: inline-block; margin-top: 6px; font-size: 9px; font-weight: 700;
+      padding: 2px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .priority-high { background: #fee2e2; color: var(--danger); }
+    .priority-medium { background: #fef3c7; color: #d97706; }
+    .priority-low { background: #d1fae5; color: #059669; }
+
+    /* Player detail modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 200; display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 500px; max-height: 70vh;
+      padding: 20px; overflow-y: auto;
+      animation: sheetUp 0.3s ease;
+    }
+    @keyframes sheetUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal-handle {
+      width: 36px; height: 4px; background: var(--border);
+      border-radius: 2px; margin: 0 auto 16px;
+    }
+    .modal-player-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .modal-player-header .player-avatar { margin: 0; flex-shrink: 0; }
+    .modal-player-info .player-name { font-size: 18px; }
+    .modal-player-info .player-title { font-size: 13px; }
+    .modal-player-info .player-company { font-size: 13px; }
+    .modal-notes { font-size: 13px; color: var(--text-secondary); line-height: 1.5; padding: 12px; background: var(--bg); border-radius: 8px; }
+    .modal-linkedin {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+      font-size: 13px; font-weight: 600; color: #0a66c2; text-decoration: none;
+    }
+    .modal-linkedin:hover { text-decoration: underline; }
+    .modal-linkedin svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .modal-schedule-section { margin-top: 14px; }
+    .modal-schedule-section h4 {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px;
+    }
+    .modal-sched-item {
+      display: flex; gap: 10px; padding: 10px 12px; background: var(--bg);
+      border-radius: 8px; margin-bottom: 6px; font-size: 12px; align-items: flex-start;
+    }
+    .modal-sched-item .msi-time {
+      font-weight: 700; color: var(--accent); white-space: nowrap; padding-top: 1px;
+    }
+    .modal-sched-item .msi-info { flex: 1; min-width: 0; }
+    .modal-sched-item .msi-title { font-weight: 600; }
+    .modal-sched-item .msi-detail { color: var(--text-secondary); font-size: 11px; margin-top: 2px; }
+    .modal-sched-item .msi-badge {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      padding: 1px 6px; border-radius: 4px; text-transform: uppercase;
+      vertical-align: middle; margin-left: 4px;
+    }
+    .msi-badge.meeting { background: #dbeafe; color: var(--meeting); }
+    .msi-badge.session { background: #ede9fe; color: var(--session); }
+    .modal-close {
+      display: block; width: 100%; margin-top: 16px; padding: 14px;
+      background: var(--bg); border: none; border-radius: var(--radius);
+      font-size: 15px; font-weight: 600; cursor: pointer; color: var(--text);
+      min-height: 48px;
+    }
+
+    /* ── Event QR ── */
+    .event-qr-section { text-align: center; padding-top: 10px; }
+    .event-qr-section .event-logo {
+      font-size: clamp(20px, 6vw, 28px); font-weight: 800; color: var(--accent); margin-bottom: 4px;
+      overflow-wrap: break-word; word-wrap: break-word; padding: 0 8px;
+    }
+    .event-qr-section .event-at {
+      font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;
+    }
+    .qr-card {
+      background: var(--surface); border-radius: 20px; padding: 28px 24px;
+      box-shadow: var(--shadow-lg); display: inline-block; margin-bottom: 20px;
+    }
+    .qr-card canvas { display: block; }
+    .event-tagline {
+      font-size: 18px; font-weight: 700; line-height: 1.3;
+      margin-bottom: 12px; padding: 0 10px;
+    }
+    .event-description {
+      font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+      padding: 0 10px; max-width: 400px; margin: 0 auto 20px;
+    }
+    .event-cta {
+      display: inline-block; background: var(--accent); color: white;
+      padding: 12px 28px; border-radius: 24px; font-size: 14px;
+      font-weight: 700; text-decoration: none; border: none; cursor: pointer;
+    }
+
+    /* ── My Card ── */
+    .card-section { padding-top: 8px; }
+    .card-person-select {
+      display: flex; gap: 8px; margin-bottom: 16px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .card-person-select::-webkit-scrollbar { display: none; }
+    .card-person-pill {
+      flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--surface);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      color: var(--text-secondary); transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .card-person-pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .business-card {
+      background: linear-gradient(145deg, #1a1a2e, #2d2b55);
+      color: white; border-radius: 16px; padding: 28px 24px;
+      box-shadow: var(--shadow-lg); margin-bottom: 16px;
+      position: relative; overflow: hidden;
+    }
+    .business-card::after {
+      content: ''; position: absolute; top: -30px; right: -30px;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .bc-company { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; opacity: 0.6; margin-bottom: 20px; }
+    .bc-name { font-size: 22px; font-weight: 800; overflow-wrap: break-word; word-wrap: break-word; }
+    .bc-title { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+    .bc-divider { width: 40px; height: 2px; background: var(--accent); margin: 16px 0; border-radius: 1px; }
+    .bc-detail { font-size: 12px; opacity: 0.8; margin-top: 8px; display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; word-break: break-all; min-width: 0; line-height: 1.4; }
+    .bc-detail svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    .card-actions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;
+    }
+    .card-action-btn {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 14px 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .card-action-btn:active { background: var(--accent-light); border-color: var(--accent); }
+    .card-action-btn svg { width: 24px; height: 24px; color: var(--accent); }
+    .card-action-btn span { font-size: 12px; font-weight: 600; color: var(--text); }
+
+    .linkedin-qr-section {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 20px; text-align: center; box-shadow: var(--shadow);
+    }
+    .linkedin-qr-section h3 { font-size: 14px; margin-bottom: 4px; }
+    .linkedin-qr-section p { font-size: 11px; color: var(--text-secondary); margin-bottom: 14px; }
+    .linkedin-qr-section canvas { display: inline-block; }
+
+    /* ── Profile Modal ── */
+    .profile-modal .modal-sheet { max-height: 50vh; }
+    .profile-list { list-style: none; }
+    .profile-list li {
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer;
+    }
+    .profile-list li:last-child { border-bottom: none; }
+    .profile-list .mini-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: white; font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; overflow: hidden;
+    }
+
+    /* ── Onboarding Overlay ── */
+    .onboarding-overlay {
+      position: fixed; inset: 0; background: var(--accent); color: white;
+      z-index: 999; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px;
+      text-align: center;
+    }
+    .onboarding-overlay.hidden { display: none; }
+    .onboarding-overlay h2 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .onboarding-overlay .onb-sub { font-size: 14px; opacity: 0.8; margin-bottom: 28px; }
+    .onboarding-overlay .onb-label { font-size: 13px; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; }
+    .onboarding-list { list-style: none; width: 100%; max-width: 340px; }
+    .onboarding-list li {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; background: rgba(255,255,255,0.12);
+      border-radius: 12px; margin-bottom: 8px; cursor: pointer;
+      transition: background 0.15s; text-align: left;
+    }
+    .onboarding-list li:hover { background: rgba(255,255,255,0.2); }
+    .onboarding-list .onb-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; flex-shrink: 0; overflow: hidden;
+    }
+    .onboarding-list .onb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .onboarding-list .onb-name { font-size: 15px; font-weight: 700; }
+    .onboarding-list .onb-title { font-size: 12px; opacity: 0.7; }
+
+    /* ── Lead Scanner ── */
+    .leads-header { display: flex; gap: 8px; margin-bottom: 12px; }
+    .leads-header .btn-scan {
+      flex: 1; padding: 12px; border-radius: var(--radius);
+      border: 1.5px solid var(--border); background: var(--surface);
+      cursor: pointer; display: flex; flex-direction: column; align-items: center;
+      gap: 4px; font-size: 11px; font-weight: 600; color: var(--text);
+      transition: all 0.15s;
+    }
+    .leads-header .btn-scan:active { background: var(--accent-light); border-color: var(--accent); }
+    .leads-header .btn-scan svg { width: 20px; height: 20px; color: var(--accent); }
+
+    .lead-form {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 16px; box-shadow: var(--shadow); margin-bottom: 12px;
+      display: none;
+    }
+    .lead-form.open { display: block; }
+    .lead-form h3 { font-size: 14px; margin-bottom: 12px; }
+    .lead-form .lf-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .lead-form .lf-field { flex: 1; }
+    .lead-form label { display: block; font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .lead-form input, .lead-form textarea, .lead-form select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit;
+    }
+    .lead-form input:focus, .lead-form textarea:focus { outline: none; border-color: var(--accent); }
+    .lead-form textarea { min-height: 50px; resize: vertical; }
+    .lead-form .lf-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+    .lead-form .lf-btn {
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: none; cursor: pointer;
+    }
+    .lf-btn-save { background: var(--accent); color: white; }
+    .lf-btn-cancel { background: var(--bg); color: var(--text); }
+
+    .lead-count { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+
+    .lead-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 14px; box-shadow: var(--shadow); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .lead-card .lc-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: white; flex-shrink: 0;
+      overflow: hidden;
+    }
+    .lead-card .lc-info { flex: 1; min-width: 0; }
+    .lead-card .lc-name { font-size: 14px; font-weight: 700; }
+    .lead-card .lc-detail { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lead-card .lc-time { font-size: 10px; color: var(--text-secondary); }
+    .lead-card .lc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .lead-card .lc-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid var(--border); background: white;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .lead-card .lc-btn svg { width: 14px; height: 14px; color: var(--accent); }
+    .lead-card .lc-btn.delete svg { color: var(--danger); }
+
+    .camera-overlay {
+      position: fixed; inset: 0; background: black; z-index: 300;
+      display: none; flex-direction: column;
+    }
+    .camera-overlay.open { display: flex; }
+    .camera-overlay video { flex: 1; object-fit: cover; }
+    .camera-overlay .camera-controls {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 20px; display: flex; justify-content: center; gap: 16px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    }
+    .camera-overlay .cam-btn {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 3px solid white; background: rgba(255,255,255,0.2);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .cam-btn-capture { background: white !important; }
+    .cam-btn-close {
+      width: 40px !important; height: 40px !important;
+      position: absolute; top: 16px; right: 16px;
+      border: none !important; background: rgba(0,0,0,0.5) !important;
+      color: white; font-size: 20px;
+    }
+    .camera-processing {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.7);
+      display: none; align-items: center; justify-content: center;
+      color: white; font-size: 15px; font-weight: 600;
+    }
+    .camera-processing.show { display: flex; }
+    .camera-processing .spinner {
+      display: inline-block; width: 20px; height: 20px;
+      border: 3px solid rgba(255,255,255,0.3); border-top-color: white;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .profile-list .mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-list .profile-name { font-size: 14px; font-weight: 600; }
+    .profile-list .profile-title { font-size: 11px; color: var(--text-secondary); }
+    .profile-list li.selected { background: var(--accent-light); margin: 0 -20px; padding: 12px 20px; }
+
+    /* Utility */
+    .section-header {
+      font-size: 12px; font-weight: 700; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin: 16px 0 8px; padding-left: 2px;
+    }
+    .section-header:first-child { margin-top: 0; }
+
+    /* ── Small mobile (360–400px) ── */
+    @media (max-width: 400px) {
+      .view { padding: 10px 12px 12px; }
+      header { padding: 0 12px; }
+      header .event-name { font-size: 15px; }
+
+      .schedule-item { padding: 10px 12px; }
+      .schedule-item .si-title { font-size: 13px; }
+
+      .player-avatar { width: 52px; height: 52px; font-size: 18px; }
+      .player-card { padding: 12px 8px; }
+      .player-name { font-size: 12px; }
+      .player-title { font-size: 10px; }
+      .player-company { font-size: 10px; }
+      .players-grid { gap: 8px; }
+
+      .business-card { padding: 22px 16px; }
+      .bc-name { font-size: 20px; }
+      .bc-company { letter-spacing: 1.5px; margin-bottom: 14px; }
+      .bc-detail { font-size: 11px; }
+
+      .qr-card { padding: 20px 16px; border-radius: 16px; }
+
+      .event-tagline { font-size: 16px; padding: 0 4px; }
+      .event-description { font-size: 12px; padding: 0 4px; }
+
+      .card-action-btn { padding: 12px 8px; }
+      .card-action-btn span { font-size: 11px; }
+
+      .linkedin-qr-section { padding: 16px; }
+
+      .modal-sheet { padding: 16px; }
+      .modal-player-info .player-name { font-size: 16px; }
+
+      nav button { font-size: 9px; }
+      nav button svg { width: 20px; height: 20px; }
+    }
+
+    /* ── Very small (under 360px) ── */
+    @media (max-width: 359px) {
+      .players-grid { grid-template-columns: 1fr; }
+      .card-actions { grid-template-columns: 1fr; }
+      .bc-name { font-size: 18px; }
+      nav button { font-size: 8px; gap: 2px; }
+    }
+
+    /* ── Update banner ── */
+    .update-banner {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #1e1b4b; color: white;
+      padding: 10px 16px; z-index: 500;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; font-weight: 600;
+      transform: translateY(-100%); transition: transform 0.35s ease;
+    }
+    .update-banner.show { transform: translateY(0); }
+    .update-banner button {
+      background: white; color: #1e1b4b; border: none; border-radius: 6px;
+      padding: 6px 14px; font-size: 12px; font-weight: 700;
+      cursor: pointer; flex-shrink: 0; min-height: 36px;
+    }
+
+    /* ── Offline indicator ── */
+    .offline-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ef4444; display: none; flex-shrink: 0;
+    }
+    .offline-dot.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- Update banner (hidden by default, slides in from top when SW detects new version) -->
+<div class="update-banner" id="update-banner">
+  <span>New version available</span>
+  <button id="update-btn">Refresh</button>
+</div>
+
+<div id="app">
+  <header>
+    <div class="header-left">
+      <div class="event-name" id="header-event-name"></div>
+      <div class="event-meta" id="header-event-meta"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="offline-dot" id="offline-dot" title="Offline"></div>
+      <button class="profile-btn" id="profile-btn" title="Select your profile"></button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Schedule View -->
+    <div class="view active" id="view-schedule">
+      <div id="next-up-container"></div>
+      <div class="day-tabs" id="day-tabs"></div>
+      <div class="filters" id="filters"></div>
+      <div id="schedule-list"></div>
+    </div>
+
+    <!-- Key Players View -->
+    <div class="view" id="view-players">
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="player-search" placeholder="Search key players...">
+      </div>
+      <div class="players-grid" id="players-grid"></div>
+    </div>
+
+    <!-- Event QR View -->
+    <div class="view" id="view-eventqr">
+      <div class="event-qr-section" id="event-qr-content"></div>
+    </div>
+
+    <!-- My Card View -->
+    <div class="view" id="view-card">
+      <div class="card-section" id="card-content"></div>
+    </div>
+
+    <!-- Leads View -->
+    <div class="view" id="view-leads">
+      <div class="leads-header">
+        <button class="btn-scan" id="btn-scan-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 21v-1a5 5 0 0 1 10 0v1"/></svg>
+          Scan Badge
+        </button>
+        <button class="btn-scan" id="btn-scan-qr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><path d="M21 14h-3v3h3zM14 21h3v-3"/></svg>
+          Scan QR
+        </button>
+        <button class="btn-scan" id="btn-add-lead-manual">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Add Lead
+        </button>
+      </div>
+
+      <div class="lead-form" id="lead-form">
+        <h3 id="lead-form-title">New Lead</h3>
+        <div class="lf-row">
+          <div class="lf-field"><label>Name</label><input id="lf-name"></div>
+        </div>
+        <div class="lf-row">
+          <div class="lf-field"><label>Title</label><input id="lf-title"></div>
+          <div class="lf-field"><label>Company</label><input id="lf-company"></div>
+        </div>
+        <div class="lf-row">
+          <div class="lf-field"><label>Email</label><input type="email" id="lf-email"></div>
+          <div class="lf-field"><label>Phone</label><input type="tel" id="lf-phone"></div>
+        </div>
+        <div class="lf-row">
+          <div class="lf-field"><label>LinkedIn</label><input id="lf-linkedin" placeholder="https://linkedin.com/in/..."></div>
+        </div>
+        <div class="lf-row">
+          <div class="lf-field">
+            <label>Priority</label>
+            <select id="lf-priority">
+              <option value="hot">Hot</option>
+              <option value="warm" selected>Warm</option>
+              <option value="cold">Cold</option>
+            </select>
+          </div>
+          <div class="lf-field">
+            <label>Source</label>
+            <select id="lf-source">
+              <option value="booth">Booth Visit</option>
+              <option value="meeting">Meeting</option>
+              <option value="session">Session</option>
+              <option value="event">Networking</option>
+              <option value="referral">Referral</option>
+            </select>
+          </div>
+        </div>
+        <div class="lf-row">
+          <div class="lf-field"><label>Notes</label><textarea id="lf-notes" placeholder="Key interests, follow-up actions..."></textarea></div>
+        </div>
+        <div class="lf-actions">
+          <button class="lf-btn lf-btn-cancel" id="lf-cancel">Cancel</button>
+          <button class="lf-btn lf-btn-save" id="lf-save">Save Lead</button>
+        </div>
+      </div>
+
+      <div class="lead-count" id="lead-count"></div>
+      <div id="leads-list"></div>
+    </div>
+  </main>
+
+  <nav id="bottom-nav">
+    <button data-view="schedule" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+      Schedule
+    </button>
+    <button data-view="players">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Key Players
+    </button>
+    <button data-view="leads">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      Leads
+    </button>
+    <button data-view="eventqr">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><path d="M21 14h-3v3h3zM14 21h3v-3"/></svg>
+      Event
+    </button>
+    <button data-view="card">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h4"/></svg>
+      My Card
+    </button>
+  </nav>
+
+  <!-- Player Detail Modal -->
+  <div class="modal-overlay" id="player-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div id="player-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- Profile Selector Modal -->
+  <div class="modal-overlay profile-modal" id="profile-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h3 style="font-size:16px;margin-bottom:16px;">Switch Profile</h3>
+      <ul class="profile-list" id="profile-list"></ul>
+    </div>
+  </div>
+
+  <!-- Camera Overlay -->
+  <div class="camera-overlay" id="camera-overlay">
+    <video id="camera-video" autoplay playsinline></video>
+    <canvas id="camera-canvas" style="display:none"></canvas>
+    <div class="camera-controls">
+      <button class="cam-btn cam-btn-capture" id="cam-capture">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" width="28" height="28"><circle cx="12" cy="12" r="10"/></svg>
+      </button>
+    </div>
+    <button class="cam-btn cam-btn-close" id="cam-close">&times;</button>
+    <div class="camera-processing" id="cam-processing">
+      <span class="spinner"></span> Analyzing...
+    </div>
+  </div>
+
+  <!-- Onboarding Overlay (first launch) -->
+  <div class="onboarding-overlay hidden" id="onboarding">
+    <h2 id="onb-event-name"></h2>
+    <div class="onb-sub" id="onb-event-dates"></div>
+    <div class="onb-label">Select your profile</div>
+    <ul class="onboarding-list" id="onboarding-list"></ul>
+  </div>
+</div>
+
+<script>/* qrcode-generator v1.4.4 | MIT | github.com/kazuhikoarase/qrcode-generator */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("\u53cb");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)};void 0!==typeof module&&(module.exports=qrcode);
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   EVENT CONFIGURATION — Edit this block for each event
+   ═══════════════════════════════════════════════════════════════════ */
+const CONFIG = {
+
+  event: {
+    name: "SaaS Connect 2026",
+    dates: "March 15–17, 2026",
+    location: "Moscone Center, San Francisco, CA",
+    timezone: "America/Los_Angeles", // IANA timezone for .ics files
+    landingPageUrl: "https://yourcompany.com/saasconnect2026",
+    tagline: "Building the Future of Partner Ecosystems",
+    description: "Visit us at Booth #742 to see our latest integrations platform in action. Chat with our team about partnership opportunities, get a live demo, and grab some swag."
+  },
+
+  company: {
+    name: "Acme Integrations",
+    website: "https://acmeintegrations.com"
+  },
+
+  // Your team attending the event
+  team: [
+    {
+      id: "schen",
+      name: "Sarah Chen",
+      title: "VP of Partnerships",
+      email: "sarah.chen@acmeint.com",
+      phone: "+1-415-555-0101",
+      linkedin: "https://linkedin.com/in/sarachen",
+      photo: ""
+    },
+    {
+      id: "mjohnson",
+      name: "Marcus Johnson",
+      title: "Senior Account Executive",
+      email: "marcus.j@acmeint.com",
+      phone: "+1-415-555-0102",
+      linkedin: "https://linkedin.com/in/marcusjohnson",
+      photo: ""
+    },
+    {
+      id: "ppatel",
+      name: "Priya Patel",
+      title: "Solutions Engineer",
+      email: "priya.p@acmeint.com",
+      phone: "+1-415-555-0103",
+      linkedin: "https://linkedin.com/in/priyapatel",
+      photo: ""
+    },
+    {
+      id: "dkim",
+      name: "David Kim",
+      title: "Marketing Director",
+      email: "david.k@acmeint.com",
+      phone: "+1-415-555-0104",
+      linkedin: "https://linkedin.com/in/davidkim",
+      photo: ""
+    }
+  ],
+
+  // Key people to know at the event
+  keyPlayers: [
+    {
+      name: "Angela Morrison",
+      title: "Chief Revenue Officer",
+      company: "CloudSync Inc.",
+      photo: "",
+      priority: "high",
+      notes: "Decision maker for their integrations stack. Spoke at last year's keynote. Interested in our API marketplace product. Meeting scheduled Day 1."
+    },
+    {
+      name: "Raj Subramaniam",
+      title: "VP of Engineering",
+      company: "DataFlow Systems",
+      photo: "",
+      priority: "high",
+      notes: "Technical evaluator. Their team is building out a new integration layer. Wants to discuss embedded iPaaS. Very technical — bring Priya."
+    },
+    {
+      name: "Lisa Fernandez",
+      title: "Head of Partnerships",
+      company: "NexGen SaaS",
+      photo: "",
+      priority: "high",
+      notes: "Existing partner, renewing in Q2. Wants to expand the integration. Key relationship — Sarah owns this."
+    },
+    {
+      name: "Thomas Wright",
+      title: "CEO",
+      company: "PartnerStack",
+      photo: "",
+      priority: "medium",
+      notes: "Potential channel partner. Recently raised Series C. Open to co-marketing opportunities."
+    },
+    {
+      name: "Mei-Ling Zhao",
+      title: "Director of Product",
+      company: "AppConnect",
+      photo: "",
+      priority: "medium",
+      notes: "Competitor — keep an eye on their booth and sessions. Previously worked at Workato."
+    },
+    {
+      name: "James Okafor",
+      title: "SVP of Sales",
+      company: "IntegrateHQ",
+      photo: "",
+      priority: "medium",
+      notes: "Met at Dreamforce last year. Warm lead — Marcus has been nurturing. Looking to consolidate vendors."
+    },
+    {
+      name: "Sonia Gupta",
+      title: "CTO",
+      company: "Relay Platform",
+      photo: "",
+      priority: "low",
+      notes: "Interesting tech — potential acquisition target or deep integration partner long-term."
+    },
+    {
+      name: "Brian Calloway",
+      title: "VP of Alliances",
+      company: "Salesforce",
+      photo: "",
+      priority: "high",
+      notes: "Key ecosystem relationship. Discussing co-sell motion. Confirm dinner plans for Day 2."
+    }
+  ],
+
+  // All schedule items — meetings, sessions, booth duty, team events
+  schedule: [
+    // ── Day 1: March 15 ──
+    { date: "2026-03-15", start: "07:30", end: "08:30", title: "Team Breakfast & Day 1 Briefing", type: "team", location: "Hotel restaurant", assignees: ["schen","mjohnson","ppatel","dkim"], notes: "Review Day 1 priorities and key targets" },
+    { date: "2026-03-15", start: "09:00", end: "10:00", title: "Opening Keynote", type: "session", location: "Main Hall A", assignees: ["schen","dkim"], notes: "Angela Morrison is also attending" },
+    { date: "2026-03-15", start: "09:00", end: "12:00", title: "Booth Duty — Morning", type: "booth", location: "Booth #742", assignees: ["mjohnson","ppatel"], notes: "Lead scan priority: VP+ titles" },
+    { date: "2026-03-15", start: "10:15", end: "11:00", title: "Breakout: API Marketplace Trends", type: "session", location: "Room 204", assignees: ["schen"], notes: "" },
+    { date: "2026-03-15", start: "11:00", end: "11:45", title: "Meeting: Angela Morrison (CloudSync)", type: "meeting", location: "Meeting Room 3B", assignees: ["schen","ppatel"], notes: "Demo the new API dashboard. Bring case studies deck." },
+    { date: "2026-03-15", start: "12:00", end: "13:00", title: "Lunch & Learn: Partner Ecosystem", type: "session", location: "Ballroom C", assignees: ["schen","mjohnson"], notes: "Sponsored by Salesforce — good networking opp" },
+    { date: "2026-03-15", start: "13:00", end: "17:00", title: "Booth Duty — Afternoon", type: "booth", location: "Booth #742", assignees: ["schen","dkim"], notes: "" },
+    { date: "2026-03-15", start: "13:30", end: "14:15", title: "Meeting: Raj Subramaniam (DataFlow)", type: "meeting", location: "Meeting Room 5A", assignees: ["ppatel","mjohnson"], notes: "Deep-dive technical discussion. Prep environment beforehand." },
+    { date: "2026-03-15", start: "14:30", end: "15:15", title: "Breakout: Embedded Integration UX", type: "session", location: "Room 301", assignees: ["ppatel"], notes: "" },
+    { date: "2026-03-15", start: "16:00", end: "16:45", title: "Meeting: Thomas Wright (PartnerStack)", type: "meeting", location: "Expo Lounge", assignees: ["schen","mjohnson"], notes: "Casual intro — feel out channel partnership interest" },
+    { date: "2026-03-15", start: "18:30", end: "20:30", title: "Welcome Reception", type: "team", location: "Rooftop Terrace", assignees: ["schen","mjohnson","ppatel","dkim"], notes: "Great networking event. Split up and work the room." },
+
+    // ── Day 2: March 16 ──
+    { date: "2026-03-16", start: "08:00", end: "08:45", title: "Team Standup", type: "team", location: "Hotel lobby", assignees: ["schen","mjohnson","ppatel","dkim"], notes: "Debrief Day 1, adjust Day 2 plan" },
+    { date: "2026-03-16", start: "09:00", end: "09:45", title: "Keynote: Future of SaaS Partnerships", type: "session", location: "Main Hall A", assignees: ["schen","dkim"], notes: "" },
+    { date: "2026-03-16", start: "09:00", end: "12:00", title: "Booth Duty — Morning", type: "booth", location: "Booth #742", assignees: ["mjohnson","ppatel"], notes: "" },
+    { date: "2026-03-16", start: "10:00", end: "10:45", title: "Meeting: Lisa Fernandez (NexGen)", type: "meeting", location: "Partner Lounge", assignees: ["schen"], notes: "Renewal discussion. Know the numbers going in." },
+    { date: "2026-03-16", start: "11:00", end: "11:45", title: "Meeting: James Okafor (IntegrateHQ)", type: "meeting", location: "Meeting Room 3B", assignees: ["mjohnson"], notes: "Vendor consolidation pitch. Bring ROI calculator." },
+    { date: "2026-03-16", start: "12:00", end: "13:00", title: "Lunch", type: "team", location: "On your own", assignees: ["schen","mjohnson","ppatel","dkim"], notes: "" },
+    { date: "2026-03-16", start: "13:00", end: "17:00", title: "Booth Duty — Afternoon", type: "booth", location: "Booth #742", assignees: ["schen","ppatel"], notes: "" },
+    { date: "2026-03-16", start: "13:30", end: "14:15", title: "Breakout: Building an Integration Marketplace", type: "session", location: "Room 204", assignees: ["dkim","mjohnson"], notes: "Our competitor AppConnect is presenting — take notes" },
+    { date: "2026-03-16", start: "15:00", end: "15:45", title: "Meeting: Sonia Gupta (Relay Platform)", type: "meeting", location: "Expo Lounge", assignees: ["schen","ppatel"], notes: "Exploratory. Learn about their tech stack." },
+    { date: "2026-03-16", start: "19:00", end: "21:30", title: "Dinner with Brian Calloway (Salesforce)", type: "meeting", location: "Kokkari Estiatorio", assignees: ["schen","mjohnson"], notes: "Co-sell discussion. Reservation under Chen." },
+
+    // ── Day 3: March 17 ──
+    { date: "2026-03-17", start: "08:00", end: "08:30", title: "Team Standup", type: "team", location: "Hotel lobby", assignees: ["schen","mjohnson","ppatel","dkim"], notes: "Final day — prioritize hot leads" },
+    { date: "2026-03-17", start: "09:00", end: "12:00", title: "Booth Duty — Final Morning", type: "booth", location: "Booth #742", assignees: ["mjohnson","dkim"], notes: "Last push for leads" },
+    { date: "2026-03-17", start: "09:30", end: "10:15", title: "Breakout: Scaling Partner Programs", type: "session", location: "Room 301", assignees: ["schen"], notes: "" },
+    { date: "2026-03-17", start: "10:30", end: "11:15", title: "Follow-up: Raj Subramaniam (DataFlow)", type: "meeting", location: "Meeting Room 5A", assignees: ["ppatel","schen"], notes: "Follow up from Day 1 deep-dive. Bring proposal outline." },
+    { date: "2026-03-17", start: "11:30", end: "12:15", title: "Closing Keynote & Awards", type: "session", location: "Main Hall A", assignees: ["schen","dkim"], notes: "" },
+    { date: "2026-03-17", start: "12:30", end: "13:30", title: "Team Wrap-Up Lunch", type: "team", location: "Blue Bottle Cafe, Moscone", assignees: ["schen","mjohnson","ppatel","dkim"], notes: "Recap event, assign follow-up owners, capture action items" },
+    { date: "2026-03-17", start: "14:00", end: "15:00", title: "Booth Teardown", type: "booth", location: "Booth #742", assignees: ["dkim","ppatel"], notes: "Coordinate with shipping" }
+  ]
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   APPLICATION STATE
+   ═══════════════════════════════════════════════════════════════════ */
+const state = {
+  currentView: 'schedule',
+  selectedDay: null,
+  typeFilter: 'all',
+  personFilter: 'all',
+  activeProfile: localStorage.getItem('activeProfile') || ''
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   UTILITY FUNCTIONS
+   ═══════════════════════════════════════════════════════════════════ */
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function avatarHTML(name, photo, size) {
+  size = size || 64;
+  if (photo) {
+    return `<img src="${photo}" alt="${name}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;">`;
+  }
+  // deterministic color from name
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash % 360);
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:hsl(${hue},55%,50%);color:white;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.35)}px;font-weight:700;flex-shrink:0;">${initials(name)}</div>`;
+}
+
+function formatTime(t) {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
+}
+
+function getDays() {
+  const days = [...new Set(CONFIG.schedule.map(s => s.date))].sort();
+  return days.map((d, i) => {
+    const dt = new Date(d + 'T12:00:00');
+    const label = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return { date: d, label: `Day ${i + 1} — ${label}`, short: `Day ${i + 1}` };
+  });
+}
+
+function getTeamMember(id) {
+  return CONFIG.team.find(t => t.id === id);
+}
+
+function generateQR(text, size) {
+  if (typeof qrcode === 'undefined') return null;
+  const typeNumber = 0;
+  const errorCorrectionLevel = 'M';
+  const qr = qrcode(typeNumber, errorCorrectionLevel);
+  qr.addData(text);
+  qr.make();
+  const moduleCount = qr.getModuleCount();
+  const cellSize = Math.floor(size / moduleCount);
+  const canvas = document.createElement('canvas');
+  canvas.width = cellSize * moduleCount;
+  canvas.height = cellSize * moduleCount;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#1a1a2e';
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+  return canvas;
+}
+
+function generateVCard(member) {
+  const names = member.name.split(' ');
+  const last = names.pop();
+  const first = names.join(' ');
+  return [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `N:${last};${first};;;`,
+    `FN:${member.name}`,
+    `ORG:${CONFIG.company.name}`,
+    `TITLE:${member.title}`,
+    `TEL;TYPE=WORK,VOICE:${member.phone}`,
+    `EMAIL;TYPE=WORK:${member.email}`,
+    `URL:${CONFIG.company.website}`,
+    'END:VCARD'
+  ].join('\r\n');
+}
+
+function downloadVCard(member) {
+  const vcf = generateVCard(member);
+  const blob = new Blob([vcf], { type: 'text/vcard' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${member.name.replace(/\s+/g, '_')}.vcf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function generateICS(item) {
+  // Build a VTIMEZONE-aware .ics so the invite appears in the event's local time
+  // on the attendee's device regardless of their own timezone.
+  const tz = CONFIG.event.timezone || 'America/Los_Angeles';
+  const pad = (n) => n.toString().padStart(2, '0');
+
+  // Parse date + time into a local datetime string (no UTC conversion)
+  const [year, month, day] = item.date.split('-');
+  const [sh, sm] = item.start.split(':');
+  const [eh, em] = item.end.split(':');
+  const dtStart = `${year}${month}${day}T${pad(sh)}${pad(sm)}00`;
+  const dtEnd = `${year}${month}${day}T${pad(eh)}${pad(em)}00`;
+
+  const uid = `${dtStart}-${item.title.replace(/\W+/g, '').slice(0, 20)}@event-companion`;
+  const now = new Date();
+  const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+
+  const assigneeNames = item.assignees.map(id => {
+    const m = getTeamMember(id);
+    return m ? m.name : id;
+  }).join(', ');
+
+  const description = [
+    item.notes || '',
+    assigneeNames ? `Attendees: ${assigneeNames}` : '',
+    `Type: ${item.type}`
+  ].filter(Boolean).join('\\n');
+
+  // Escape ICS special chars
+  const esc = (s) => s.replace(/[\\;,]/g, c => '\\' + c).replace(/\n/g, '\\n');
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//EventCompanion//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `DTSTART;TZID=${tz}:${dtStart}`,
+    `DTEND;TZID=${tz}:${dtEnd}`,
+    `DTSTAMP:${stamp}`,
+    `UID:${uid}`,
+    `SUMMARY:${esc(item.title)}`,
+    `LOCATION:${esc(item.location)}`,
+    `DESCRIPTION:${esc(description)}`,
+    'STATUS:CONFIRMED',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ];
+
+  return lines.join('\r\n');
+}
+
+function downloadICS(item) {
+  const ics = generateICS(item);
+  const blob = new Blob([ics], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${item.title.replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40)}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RENDER FUNCTIONS
+   ═══════════════════════════════════════════════════════════════════ */
+
+// ── Header ──
+function renderHeader() {
+  document.getElementById('header-event-name').textContent = CONFIG.event.name;
+  document.getElementById('header-event-meta').textContent = `${CONFIG.event.dates} · ${CONFIG.event.location}`;
+  const member = getTeamMember(state.activeProfile);
+  document.getElementById('profile-btn').textContent = member ? initials(member.name) : '?';
+}
+
+// ── Schedule ──
+function renderSchedule() {
+  const days = getDays();
+  if (!state.selectedDay) {
+    // Pick today if it's an event day, otherwise first day
+    const today = new Date().toISOString().split('T')[0];
+    state.selectedDay = days.find(d => d.date === today)?.date || days[0]?.date;
+  }
+
+  // Next up banner
+  const now = new Date();
+  const nowStr = now.toISOString().split('T')[0];
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  let nextItem = null;
+  const todayItems = CONFIG.schedule
+    .filter(s => s.date === nowStr)
+    .filter(s => state.personFilter === 'all' || s.assignees.includes(state.personFilter))
+    .sort((a, b) => a.start.localeCompare(b.start));
+
+  for (const item of todayItems) {
+    const [h, m] = item.start.split(':').map(Number);
+    if (h * 60 + m >= nowMinutes) { nextItem = item; break; }
+  }
+
+  const nuc = document.getElementById('next-up-container');
+  if (nextItem) {
+    const assigneeNames = nextItem.assignees.map(id => getTeamMember(id)?.name?.split(' ')[0] || id).join(', ');
+    nuc.innerHTML = `
+      <div class="next-up">
+        <div class="next-up-label">Next Up</div>
+        <div class="next-up-title">${nextItem.title}</div>
+        <div class="next-up-detail">${formatTime(nextItem.start)} — ${nextItem.location} · ${assigneeNames}</div>
+      </div>`;
+  } else {
+    nuc.innerHTML = '';
+  }
+
+  // Day tabs
+  const dt = document.getElementById('day-tabs');
+  dt.innerHTML = days.map(d =>
+    `<button class="day-tab ${d.date === state.selectedDay ? 'active' : ''}" data-date="${d.date}">${d.short}</button>`
+  ).join('');
+
+  // Filters
+  const ft = document.getElementById('filters');
+  const types = [
+    { key: 'all', label: 'All' },
+    { key: 'meeting', label: 'Meetings' },
+    { key: 'session', label: 'Sessions' },
+    { key: 'booth', label: 'Booth' },
+    { key: 'team', label: 'Team' }
+  ];
+  let filterHTML = types.map(t =>
+    `<button class="filter-chip ${state.typeFilter === t.key ? 'active' : ''}" data-type="${t.key}">${t.label}</button>`
+  ).join('');
+  filterHTML += '<span style="width:8px;flex-shrink:0"></span>';
+  filterHTML += `<button class="filter-chip person-chip ${state.personFilter === 'all' ? 'active' : ''}" data-person="all">Everyone</button>`;
+  filterHTML += CONFIG.team.map(t =>
+    `<button class="filter-chip person-chip ${state.personFilter === t.id ? 'active' : ''}" data-person="${t.id}">${t.name.split(' ')[0]}</button>`
+  ).join('');
+  ft.innerHTML = filterHTML;
+
+  // Schedule items
+  let items = CONFIG.schedule.filter(s => s.date === state.selectedDay);
+  if (state.typeFilter !== 'all') items = items.filter(s => s.type === state.typeFilter);
+  if (state.personFilter !== 'all') items = items.filter(s => s.assignees.includes(state.personFilter));
+  items.sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+
+  const sl = document.getElementById('schedule-list');
+  if (items.length === 0) {
+    sl.innerHTML = `<div class="empty-state"><p>No items match your filters for this day.</p></div>`;
+    return;
+  }
+
+  sl.innerHTML = items.map((item, idx) => {
+    const assigneeNames = item.assignees.map(id => {
+      const m = getTeamMember(id);
+      return m ? m.name.split(' ')[0] : id;
+    });
+    // Find the index in CONFIG.schedule for the calendar button
+    const schedIdx = CONFIG.schedule.indexOf(item);
+    return `
+      <div class="schedule-item type-${item.type}">
+        <div class="si-time">${formatTime(item.start)} – ${formatTime(item.end)}</div>
+        <div class="si-title">${item.title}</div>
+        <div class="si-location">${item.location}</div>
+        <div class="si-badges">
+          <span class="si-badge ${item.type}">${item.type}</span>
+          ${assigneeNames.map(n => `<span class="si-badge person">${n}</span>`).join('')}
+        </div>
+        ${item.notes ? `<div class="si-notes">${item.notes}</div>` : ''}
+        <div class="si-footer">
+          <button class="si-add-cal" data-sched-idx="${schedIdx}" title="Add to calendar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
+            Add to Cal
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Key Players ──
+function renderPlayers(filter) {
+  filter = (filter || '').toLowerCase();
+  const players = CONFIG.keyPlayers.filter(p => {
+    if (!filter) return true;
+    return p.name.toLowerCase().includes(filter) ||
+           p.company.toLowerCase().includes(filter) ||
+           p.title.toLowerCase().includes(filter);
+  });
+
+  // Sort by priority
+  const pOrder = { high: 0, medium: 1, low: 2 };
+  players.sort((a, b) => (pOrder[a.priority] || 2) - (pOrder[b.priority] || 2));
+
+  const grid = document.getElementById('players-grid');
+  if (players.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>No players match your search.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = players.map((p, i) => `
+    <div class="player-card" data-player-idx="${CONFIG.keyPlayers.indexOf(p)}">
+      <div class="player-avatar">${avatarHTML(p.name, p.photo, 64)}</div>
+      <div class="player-name">${p.name}</div>
+      <div class="player-title">${p.title}</div>
+      <div class="player-company">${p.company}</div>
+      <span class="player-priority priority-${p.priority}">${p.priority}</span>
+    </div>
+  `).join('');
+}
+
+function showPlayerModal(idx) {
+  const p = CONFIG.keyPlayers[idx];
+  if (!p) return;
+
+  // Find related schedule items — meetings mentioning this person's name or company
+  const nameWords = p.name.toLowerCase().split(' ');
+  const lastName = nameWords[nameWords.length - 1];
+  const companyLower = p.company.toLowerCase();
+  const relatedItems = CONFIG.schedule.filter(s => {
+    const titleLower = s.title.toLowerCase();
+    const notesLower = (s.notes || '').toLowerCase();
+    return titleLower.includes(lastName) || titleLower.includes(companyLower) ||
+           notesLower.includes(p.name.toLowerCase()) || notesLower.includes(companyLower);
+  }).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+
+  let schedHTML = '';
+  if (relatedItems.length > 0) {
+    schedHTML = `<div class="modal-schedule-section"><h4>Related Schedule</h4>`;
+    schedHTML += relatedItems.map(s => {
+      const dt = new Date(s.date + 'T12:00:00');
+      const dayLabel = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return `<div class="modal-sched-item">
+        <div class="msi-time">${formatTime(s.start)}</div>
+        <div class="msi-info">
+          <div class="msi-title">${s.title}<span class="msi-badge ${s.type}">${s.type}</span></div>
+          <div class="msi-detail">${dayLabel} &middot; ${s.location}</div>
+        </div>
+      </div>`;
+    }).join('');
+    schedHTML += '</div>';
+  }
+
+  // LinkedIn link
+  const linkedInLink = p.linkedin ? `
+    <a class="modal-linkedin" href="${p.linkedin}" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      View LinkedIn Profile
+    </a>
+  ` : '';
+
+  document.getElementById('player-modal-content').innerHTML = `
+    <div class="modal-player-header">
+      <div class="player-avatar">${avatarHTML(p.name, p.photo, 64)}</div>
+      <div class="modal-player-info">
+        <div class="player-name">${p.name}</div>
+        <div class="player-title">${p.title}</div>
+        <div class="player-company">${p.company}</div>
+        <span class="player-priority priority-${p.priority}" style="margin-top:6px">${p.priority} priority</span>
+        ${linkedInLink}
+      </div>
+    </div>
+    ${p.notes ? `<div class="modal-notes">${p.notes}</div>` : ''}
+    ${schedHTML}
+    <button class="modal-close" onclick="document.getElementById('player-modal').classList.remove('open')">Close</button>
+  `;
+  document.getElementById('player-modal').classList.add('open');
+}
+
+// ── Event QR ──
+function renderEventQR() {
+  const el = document.getElementById('event-qr-content');
+  el.innerHTML = `
+    <div class="event-logo">${CONFIG.company.name}</div>
+    <div class="event-at">at ${CONFIG.event.name}</div>
+    <div class="qr-card" id="event-qr-canvas-wrap"></div>
+    <div class="event-tagline">${CONFIG.event.tagline}</div>
+    <div class="event-description">${CONFIG.event.description}</div>
+    <button class="event-cta" onclick="window.open('${CONFIG.event.landingPageUrl}','_blank')">Visit Landing Page</button>
+  `;
+  const qrSize = Math.min(220, window.innerWidth - 100);
+  const canvas = generateQR(CONFIG.event.landingPageUrl, qrSize);
+  if (canvas) {
+    document.getElementById('event-qr-canvas-wrap').appendChild(canvas);
+  } else {
+    document.getElementById('event-qr-canvas-wrap').innerHTML = `<p style="padding:20px;color:var(--text-secondary);font-size:13px;">QR could not render.<br>${CONFIG.event.landingPageUrl}</p>`;
+  }
+}
+
+// ── My Card ──
+function renderCard() {
+  const el = document.getElementById('card-content');
+  const member = getTeamMember(state.activeProfile) || CONFIG.team[0];
+  if (!member) { el.innerHTML = '<p>No team members configured.</p>'; return; }
+
+  let html = '';
+
+  // Business card
+  html += `
+    <div class="business-card">
+      <div class="bc-company">${CONFIG.company.name}</div>
+      ${member.photo ? `<div style="margin-bottom:12px;">${avatarHTML(member.name, member.photo, 72)}</div>` : ''}
+      <div class="bc-name">${member.name}</div>
+      <div class="bc-title">${member.title}</div>
+      <div class="bc-divider"></div>
+      <div class="bc-detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+        ${member.email}
+      </div>
+      <div class="bc-detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        ${member.phone}
+      </div>
+      <div class="bc-detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        ${CONFIG.company.website}
+      </div>
+    </div>
+  `;
+
+  // Action buttons
+  html += `
+    <div class="card-actions">
+      <button class="card-action-btn" id="btn-download-vcard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Save Contact</span>
+      </button>
+      <button class="card-action-btn" id="btn-share-card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span>Share Card</span>
+      </button>
+    </div>
+  `;
+
+  // LinkedIn QR
+  html += `
+    <div class="linkedin-qr-section">
+      <h3>Connect on LinkedIn</h3>
+      <p>Scan to view ${member.name.split(' ')[0]}'s profile</p>
+      <div id="linkedin-qr-canvas-wrap"></div>
+    </div>
+  `;
+
+  el.innerHTML = html;
+
+  // Generate LinkedIn QR
+  const liQrSize = Math.min(180, window.innerWidth - 100);
+  const linkedinCanvas = generateQR(member.linkedin, liQrSize);
+  const wrap = document.getElementById('linkedin-qr-canvas-wrap');
+  if (linkedinCanvas) {
+    wrap.appendChild(linkedinCanvas);
+  } else {
+    wrap.innerHTML = `<p style="font-size:12px;color:var(--text-secondary);"><a href="${member.linkedin}" target="_blank">Open LinkedIn</a></p>`;
+  }
+
+  // vCard download
+  document.getElementById('btn-download-vcard').addEventListener('click', () => downloadVCard(member));
+
+  // Share card (Web Share API or fallback)
+  document.getElementById('btn-share-card').addEventListener('click', () => {
+    const text = `${member.name}\n${member.title} at ${CONFIG.company.name}\n${member.email}\n${member.phone}\n${member.linkedin}`;
+    if (navigator.share) {
+      navigator.share({ title: member.name, text: text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('btn-share-card');
+        btn.querySelector('span').textContent = 'Copied!';
+        setTimeout(() => btn.querySelector('span').textContent = 'Share Card', 1500);
+      });
+    }
+  });
+}
+
+// ── Profile Modal ──
+function renderProfileList() {
+  const list = document.getElementById('profile-list');
+  list.innerHTML = CONFIG.team.map(t => `
+    <li data-profile="${t.id}" class="${t.id === state.activeProfile ? 'selected' : ''}">
+      <div class="mini-avatar">${t.photo ? `<img src="${t.photo}" alt="${t.name}">` : initials(t.name)}</div>
+      <div>
+        <div class="profile-name">${t.name}</div>
+        <div class="profile-title">${t.title}</div>
+      </div>
+    </li>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EVENT HANDLERS
+   ═══════════════════════════════════════════════════════════════════ */
+function switchView(view) {
+  state.currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-${view}`).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+
+  if (view === 'schedule') renderSchedule();
+  if (view === 'players') renderPlayers(document.getElementById('player-search')?.value);
+  if (view === 'eventqr') renderEventQR();
+  if (view === 'card') renderCard();
+  if (view === 'leads') renderLeads();
+}
+
+document.getElementById('bottom-nav').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-view]');
+  if (btn) switchView(btn.dataset.view);
+});
+
+// Add to Calendar buttons (delegated)
+document.getElementById('schedule-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('.si-add-cal');
+  if (btn) {
+    const idx = parseInt(btn.dataset.schedIdx);
+    const item = CONFIG.schedule[idx];
+    if (item) {
+      downloadICS(item);
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Added';
+      setTimeout(() => {
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg> Add to Cal';
+      }, 2000);
+    }
+  }
+});
+
+// Day tabs
+document.getElementById('day-tabs').addEventListener('click', (e) => {
+  if (e.target.classList.contains('day-tab')) {
+    state.selectedDay = e.target.dataset.date;
+    renderSchedule();
+  }
+});
+
+// Type & person filter chips
+document.getElementById('filters').addEventListener('click', (e) => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  if (chip.dataset.type !== undefined) {
+    state.typeFilter = chip.dataset.type;
+  }
+  if (chip.dataset.person !== undefined) {
+    state.personFilter = chip.dataset.person;
+  }
+  renderSchedule();
+});
+
+// Player search
+document.getElementById('player-search').addEventListener('input', (e) => {
+  renderPlayers(e.target.value);
+});
+
+// Player card click
+document.getElementById('players-grid').addEventListener('click', (e) => {
+  const card = e.target.closest('.player-card');
+  if (card) showPlayerModal(parseInt(card.dataset.playerIdx));
+});
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// Profile button
+document.getElementById('profile-btn').addEventListener('click', () => {
+  renderProfileList();
+  document.getElementById('profile-modal').classList.add('open');
+});
+
+// Profile selection
+document.getElementById('profile-list').addEventListener('click', (e) => {
+  const li = e.target.closest('li[data-profile]');
+  if (li) {
+    state.activeProfile = li.dataset.profile;
+    state.personFilter = li.dataset.profile;
+    localStorage.setItem('activeProfile', li.dataset.profile);
+    document.getElementById('profile-modal').classList.remove('open');
+    renderHeader();
+    if (state.currentView === 'schedule') renderSchedule();
+    if (state.currentView === 'card') renderCard();
+  }
+});
+
+// (Card person pills removed — My Card shows logged-in user only)
+
+/* ═══════════════════════════════════════════════════════════════════
+   LEADS — scan, capture, manual entry, local storage
+   ═══════════════════════════════════════════════════════════════════ */
+function getLeads() {
+  try { return JSON.parse(localStorage.getItem('event_leads') || '[]'); }
+  catch { return []; }
+}
+
+function saveLeads(leads) {
+  localStorage.setItem('event_leads', JSON.stringify(leads));
+}
+
+function renderLeads() {
+  const leads = getLeads();
+  document.getElementById('lead-count').textContent = leads.length > 0
+    ? `${leads.length} lead${leads.length !== 1 ? 's' : ''} captured`
+    : 'No leads captured yet — scan a badge or add one manually.';
+
+  const list = document.getElementById('leads-list');
+  if (leads.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+
+  // Sort newest first
+  const sorted = [...leads].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  list.innerHTML = sorted.map((l, i) => {
+    const idx = leads.indexOf(l);
+    const time = l.timestamp ? new Date(l.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+    const priorityColors = { hot: '#ef4444', warm: '#f59e0b', cold: '#6b7280' };
+    const priorityColor = priorityColors[l.priority] || '#6b7280';
+    return `
+      <div class="lead-card">
+        <div class="lc-avatar" style="background:${priorityColor}">${initials(l.name || '?')}</div>
+        <div class="lc-info">
+          <div class="lc-name">${l.name || 'Unknown'}</div>
+          <div class="lc-detail">${[l.title, l.company].filter(Boolean).join(' — ')}</div>
+          <div class="lc-time">${time}${l.source ? ' · ' + l.source : ''}</div>
+        </div>
+        <div class="lc-actions">
+          ${l.email ? `<a class="lc-btn" href="mailto:${l.email}" title="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg></a>` : ''}
+          <button class="lc-btn delete" onclick="deleteLead(${idx})" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.deleteLead = function(idx) {
+  const leads = getLeads();
+  leads.splice(idx, 1);
+  saveLeads(leads);
+  renderLeads();
+};
+
+// Lead form
+const leadForm = document.getElementById('lead-form');
+document.getElementById('btn-add-lead-manual').addEventListener('click', () => {
+  clearLeadForm();
+  leadForm.classList.add('open');
+});
+
+document.getElementById('lf-cancel').addEventListener('click', () => {
+  leadForm.classList.remove('open');
+});
+
+document.getElementById('lf-save').addEventListener('click', () => {
+  const lead = {
+    name: document.getElementById('lf-name').value.trim(),
+    title: document.getElementById('lf-title').value.trim(),
+    company: document.getElementById('lf-company').value.trim(),
+    email: document.getElementById('lf-email').value.trim(),
+    phone: document.getElementById('lf-phone').value.trim(),
+    linkedin: document.getElementById('lf-linkedin').value.trim(),
+    priority: document.getElementById('lf-priority').value,
+    source: document.getElementById('lf-source').value,
+    notes: document.getElementById('lf-notes').value.trim(),
+    capturedBy: state.activeProfile,
+    timestamp: Date.now()
+  };
+
+  if (!lead.name) { alert('Name is required'); return; }
+
+  const leads = getLeads();
+  leads.push(lead);
+  saveLeads(leads);
+  leadForm.classList.remove('open');
+  renderLeads();
+});
+
+function clearLeadForm() {
+  ['lf-name','lf-title','lf-company','lf-email','lf-phone','lf-linkedin','lf-notes'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('lf-priority').value = 'warm';
+  document.getElementById('lf-source').value = 'booth';
+}
+
+function populateLeadForm(data) {
+  document.getElementById('lf-name').value = data.name || '';
+  document.getElementById('lf-title').value = data.title || '';
+  document.getElementById('lf-company').value = data.company || '';
+  document.getElementById('lf-email').value = data.email || '';
+  document.getElementById('lf-phone').value = data.phone || '';
+  document.getElementById('lf-linkedin').value = data.linkedin || '';
+  document.getElementById('lf-notes').value = data.notes || '';
+}
+
+// Camera scanning
+let cameraStream = null;
+let scanMode = ''; // 'badge' or 'qr'
+
+async function openCamera(mode) {
+  scanMode = mode;
+  const overlay = document.getElementById('camera-overlay');
+  const video = document.getElementById('camera-video');
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+    });
+    video.srcObject = cameraStream;
+    overlay.classList.add('open');
+  } catch (e) {
+    alert('Could not access camera: ' + e.message);
+  }
+}
+
+function closeCamera() {
+  const overlay = document.getElementById('camera-overlay');
+  overlay.classList.remove('open');
+  document.getElementById('cam-processing').classList.remove('show');
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+}
+
+document.getElementById('cam-close').addEventListener('click', closeCamera);
+
+document.getElementById('btn-scan-badge').addEventListener('click', () => openCamera('badge'));
+document.getElementById('btn-scan-qr').addEventListener('click', () => openCamera('qr'));
+
+document.getElementById('cam-capture').addEventListener('click', async () => {
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  if (scanMode === 'qr') {
+    // Try QR decode using canvas data
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const qrResult = decodeQRFromImageData(imageData);
+    if (qrResult) {
+      closeCamera();
+      // If it's a URL, store it; if it's a vCard, parse it
+      if (qrResult.startsWith('BEGIN:VCARD')) {
+        const data = parseVCard(qrResult);
+        clearLeadForm();
+        populateLeadForm(data);
+        leadForm.classList.add('open');
+      } else {
+        // Likely a URL or plain text
+        clearLeadForm();
+        populateLeadForm({ notes: qrResult });
+        leadForm.classList.add('open');
+      }
+      return;
+    }
+    alert('No QR code detected. Try again or use badge scan.');
+    return;
+  }
+
+  // Badge scan — use Claude Vision API
+  document.getElementById('cam-processing').classList.add('show');
+
+  try {
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    const base64 = dataUrl.split(',')[1];
+
+    // Check if user has an API key stored in admin
+    let apiKey = localStorage.getItem('admin_api_key') || '';
+    if (!apiKey) {
+      apiKey = prompt('Enter your Anthropic API key to enable badge scanning.\n(This is saved locally in your browser.)');
+      if (!apiKey) { closeCamera(); return; }
+      localStorage.setItem('admin_api_key', apiKey);
+    }
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 512,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+            { type: 'text', text: 'Extract contact info from this badge/business card photo. Return ONLY a JSON object with these fields (use empty string if not visible): {"name":"","title":"","company":"","email":"","phone":"","linkedin":"","notes":""}. No markdown, no explanation.' }
+          ]
+        }]
+      })
+    });
+
+    if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+
+    const data = await resp.json();
+    let text = data.content[0]?.text || '';
+    if (text.startsWith('```')) text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+
+    const parsed = JSON.parse(text);
+    closeCamera();
+    clearLeadForm();
+    populateLeadForm(parsed);
+    leadForm.classList.add('open');
+
+  } catch (e) {
+    closeCamera();
+    alert('Could not process badge: ' + e.message);
+  }
+});
+
+// Simple QR decoder using canvas — uses the qrcode library already loaded
+function decodeQRFromImageData(imageData) {
+  // Simple threshold-based QR detection
+  // For production, use jsQR library — here we do basic detection
+  try {
+    const w = imageData.width, h = imageData.height;
+    const d = imageData.data;
+    // Convert to 1-bit
+    const modules = [];
+    const blockSize = Math.floor(Math.min(w, h) / 40);
+    for (let y = 0; y < h; y += blockSize) {
+      const row = [];
+      for (let x = 0; x < w; x += blockSize) {
+        const i = (y * w + x) * 4;
+        const gray = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+        row.push(gray < 128);
+      }
+      modules.push(row);
+    }
+    // If jsQR is available, use it instead
+    if (window.jsQR) {
+      const result = jsQR(d, w, h);
+      return result ? result.data : null;
+    }
+    return null;
+  } catch { return null; }
+}
+
+function parseVCard(text) {
+  const get = (key) => {
+    const m = text.match(new RegExp(key + '[;:]([^\\r\\n]+)', 'i'));
+    return m ? m[1].replace(/^.*?:/, '').trim() : '';
+  };
+  const nameParts = get('FN') || get('N');
+  return {
+    name: nameParts.replace(/;/g, ' ').trim(),
+    title: get('TITLE'),
+    company: get('ORG'),
+    email: get('EMAIL'),
+    phone: get('TEL'),
+    linkedin: (text.match(/linkedin\.com[^\r\n]*/i) || [''])[0],
+    notes: ''
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INIT — show onboarding if no profile, otherwise render normally
+   ═══════════════════════════════════════════════════════════════════ */
+function showOnboarding() {
+  const overlay = document.getElementById('onboarding');
+  document.getElementById('onb-event-name').textContent = CONFIG.event.name;
+  document.getElementById('onb-event-dates').textContent = CONFIG.event.dates;
+
+  const list = document.getElementById('onboarding-list');
+  list.innerHTML = CONFIG.team.map(t => `
+    <li data-onb-profile="${t.id}">
+      <div class="onb-avatar">
+        ${t.photo ? `<img src="${t.photo}" alt="${t.name}">` : initials(t.name)}
+      </div>
+      <div>
+        <div class="onb-name">${t.name}</div>
+        <div class="onb-title">${t.title}</div>
+      </div>
+    </li>
+  `).join('');
+
+  list.addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-onb-profile]');
+    if (!li) return;
+    state.activeProfile = li.dataset.onbProfile;
+    state.personFilter = li.dataset.onbProfile;
+    localStorage.setItem('activeProfile', li.dataset.onbProfile);
+    overlay.classList.add('hidden');
+    renderHeader();
+    renderSchedule();
+    renderPlayers();
+  });
+
+  overlay.classList.remove('hidden');
+}
+
+if (!state.activeProfile || !getTeamMember(state.activeProfile)) {
+  // First launch — show onboarding
+  showOnboarding();
+  // Still render header with fallback
+  state.activeProfile = CONFIG.team[0]?.id || '';
+  renderHeader();
+  renderSchedule();
+  renderPlayers();
+} else {
+  renderHeader();
+  renderSchedule();
+  renderPlayers();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SERVICE WORKER — Register, detect updates, prompt user
+   ═══════════════════════════════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+
+  // When the new SW takes over, reload once
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+
+  navigator.serviceWorker.register('./sw.js').then(registration => {
+    // Check for updates periodically (every 30 min when online)
+    setInterval(() => {
+      if (navigator.onLine) registration.update();
+    }, 30 * 60 * 1000);
+
+    // If a new SW is found waiting, show the update banner
+    const showUpdateBanner = () => {
+      const banner = document.getElementById('update-banner');
+      banner.classList.add('show');
+      document.getElementById('update-btn').addEventListener('click', () => {
+        // Tell waiting SW to skipWaiting → triggers controllerchange → reload
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    };
+
+    // New SW installed and waiting
+    if (registration.waiting) {
+      showUpdateBanner();
+    }
+
+    // New SW installing — listen for it to finish
+    registration.addEventListener('updatefound', () => {
+      const newWorker = registration.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        // New SW is installed and waiting, existing SW still active
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateBanner();
+        }
+      });
+    });
+  }).catch(err => {
+    console.log('SW registration failed:', err);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   OFFLINE INDICATOR — Shows a red dot when connectivity drops
+   ═══════════════════════════════════════════════════════════════════ */
+const offlineDot = document.getElementById('offline-dot');
+function updateOnlineStatus() {
+  offlineDot.classList.toggle('visible', !navigator.onLine);
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+</script>
+</body>
+</html>

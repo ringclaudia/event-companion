@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Companion — Admin</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --accent-light: #eef2ff;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .admin-header {
+      background: var(--accent);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-header h1 { font-size: 18px; font-weight: 700; }
+    .admin-header .subtitle { font-size: 12px; opacity: 0.8; }
+    .header-actions { display: flex; gap: 8px; }
+    .header-actions a, .header-actions button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.15);
+      color: white;
+      transition: background 0.15s;
+    }
+    .header-actions a:hover, .header-actions button:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+    }
+
+    /* ── Sections ── */
+    .section {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-header h2 {
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-header .badge {
+      font-size: 11px;
+      background: var(--accent-light);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .section-body { padding: 20px; }
+
+    /* ── Step indicator ── */
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .step {
+      flex: 1;
+      padding: 14px 16px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 20%;
+      height: 60%;
+      width: 1px;
+      background: var(--border);
+    }
+    .step.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .step.completed {
+      color: var(--success);
+      border-bottom-color: var(--success);
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--text-secondary);
+      font-size: 11px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .step.active .step-num {
+      background: var(--accent);
+      color: white;
+    }
+    .step.completed .step-num {
+      background: var(--success);
+      color: white;
+    }
+
+    /* ── Step panels ── */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* ── API Key input ── */
+    .api-key-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .api-key-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: monospace;
+    }
+    .api-key-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .api-key-status {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .api-key-status.valid { background: #ecfdf5; color: var(--success); }
+    .api-key-status.invalid { background: #fef2f2; color: var(--danger); }
+    .api-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 10px 14px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fafbfc;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .drop-zone svg {
+      width: 48px;
+      height: 48px;
+      stroke: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+    .drop-zone.dragover svg { stroke: var(--accent); }
+    .drop-zone h3 { font-size: 15px; margin-bottom: 4px; }
+    .drop-zone p { font-size: 13px; color: var(--text-secondary); }
+    .drop-zone .supported { font-size: 11px; color: var(--text-secondary); margin-top: 8px; }
+
+    /* ── URL input ── */
+    .url-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .url-input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .url-input-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+
+    /* ── Paste area ── */
+    .paste-area {
+      margin-top: 16px;
+    }
+    .paste-area textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .paste-area textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .paste-area label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    /* ── Source list ── */
+    .source-list { margin-top: 16px; }
+    .source-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      background: white;
+    }
+    .source-item .source-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .source-icon.pdf { background: #fef2f2; color: var(--danger); }
+    .source-icon.txt { background: #f0f9ff; color: #3b82f6; }
+    .source-icon.json { background: #ecfdf5; color: var(--success); }
+    .source-icon.csv { background: #ecfdf5; color: var(--success); }
+    .source-icon.url { background: #f5f3ff; color: var(--accent); }
+    .source-icon.paste { background: #fffbeb; color: var(--warning); }
+    .source-icon.doc { background: #eff6ff; color: #2563eb; }
+    .source-item .source-info { flex: 1; min-width: 0; }
+    .source-item .source-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .source-item .source-meta { font-size: 11px; color: var(--text-secondary); }
+    .source-item .source-remove {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: #fef2f2;
+      color: var(--danger);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled {
+      background: #a5b4fc;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+    .btn-success:hover { background: #059669; }
+    .btn-danger {
+      background: white;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+    }
+    .btn-danger:hover { background: #fef2f2; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    /* ── Process / AI Panel ── */
+    .process-status {
+      padding: 16px;
+      border-radius: 8px;
+      background: var(--accent-light);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .process-status .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--accent-light);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .process-status.error {
+      background: #fef2f2;
+      color: var(--danger);
+    }
+    .process-status.success {
+      background: #ecfdf5;
+      color: var(--success);
+    }
+
+    /* ── Preview / Edit ── */
+    .config-preview {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-x: auto;
+      max-height: 500px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .preview-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .preview-tab {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .preview-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .preview-tab .count {
+      font-size: 11px;
+      background: var(--accent-light);
+      color: var(--accent);
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
+
+    /* ── Editable cards ── */
+    .edit-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 10px;
+      background: white;
+    }
+    .edit-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .edit-card-header h4 { font-size: 14px; }
+
+    /* ── Photo upload widget ── */
+    .photo-upload-area {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .photo-preview {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 2px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      position: relative;
+    }
+    .photo-preview:hover { border-color: var(--accent); }
+    .photo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .photo-preview .photo-placeholder {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      line-height: 1;
+    }
+    .photo-preview .photo-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.15s;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .photo-preview:hover .photo-overlay { opacity: 1; }
+    .photo-controls {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 4px;
+    }
+    .photo-controls .photo-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .photo-btn-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .photo-btn {
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+      color: var(--text);
+    }
+    .photo-btn:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+    .photo-btn.linkedin-btn { border-color: #0a66c2; color: #0a66c2; }
+    .photo-btn.linkedin-btn:hover { background: #e8f0fe; }
+    .photo-btn.remove-photo-btn { color: var(--danger); border-color: #fecaca; }
+    .photo-btn.remove-photo-btn:hover { background: #fef2f2; }
+    .photo-url-input {
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 11px;
+      width: 100%;
+      font-family: monospace;
+    }
+    .photo-url-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(79,70,229,0.1);
+    }
+    .photo-status {
+      font-size: 11px;
+      color: var(--text-secondary);
+      min-height: 16px;
+    }
+    .photo-status.fetching { color: var(--accent); }
+    .photo-status.error { color: var(--danger); }
+    .photo-status.success { color: var(--success); }
+    .edit-card .field-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .edit-card .field {
+      flex: 1;
+    }
+    .edit-card label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .edit-card input, .edit-card textarea, .edit-card select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .edit-card input:focus, .edit-card textarea:focus, .edit-card select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .edit-card textarea { resize: vertical; min-height: 50px; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-card .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .stat-card .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    /* ── Export panel ── */
+    .export-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .export-option {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .export-option:hover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .export-option svg {
+      width: 36px;
+      height: 36px;
+      stroke: var(--accent);
+      margin-bottom: 8px;
+    }
+    .export-option h3 { font-size: 14px; margin-bottom: 4px; }
+    .export-option p { font-size: 12px; color: var(--text-secondary); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .steps { flex-direction: column; }
+      .step { text-align: left; padding: 10px 16px; }
+      .step:not(:last-child)::after { display: none; }
+      .export-options { grid-template-columns: 1fr; }
+      .field-row { flex-direction: column; gap: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-header">
+  <div>
+    <h1>Event Companion Admin</h1>
+    <div class="subtitle">Upload sources, AI organizes your event</div>
+  </div>
+  <div class="header-actions">
+    <a href="./index.html">View App</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" data-step="1">
+      <span class="step-num">1</span> Connect AI
+    </div>
+    <div class="step" data-step="2">
+      <span class="step-num">2</span> Add Sources
+    </div>
+    <div class="step" data-step="3">
+      <span class="step-num">3</span> Process
+    </div>
+    <div class="step" data-step="4">
+      <span class="step-num">4</span> Review & Export
+    </div>
+  </div>
+
+  <!-- ═══════════════════ STEP 1: API KEY ═══════════════════ -->
+  <div class="step-panel active" id="panel-1">
+    <div class="section">
+      <div class="section-header">
+        <h2>Connect Claude AI</h2>
+      </div>
+      <div class="section-body">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+          Your API key is used <strong>only in your browser</strong> to call the Claude API directly. It is never stored on any server.
+        </p>
+        <div class="api-key-row">
+          <input type="password" id="api-key" placeholder="sk-ant-api03-..." autocomplete="off">
+          <button class="btn btn-primary" id="btn-verify-key">Verify</button>
+          <span class="api-key-status" id="api-key-status" style="display:none"></span>
+        </div>
+        <div class="api-note">
+          Get an API key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--accent);font-weight:600;">console.anthropic.com</a>.
+          Your key stays in your browser — it's sent directly to the Anthropic API via HTTPS and never touches any other server.
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-load-existing">Edit Existing Config</button>
+          <button class="btn btn-primary" id="btn-step1-next" disabled>Next: Add Sources</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ STEP 2: ADD SOURCES ═══════════════════ -->
+  <div class="step-panel" id="panel-2">
+    <div class="section">
+      <div class="section-header">
+        <h2>Upload Files</h2>
+        <span class="badge" id="source-count">0 sources</span>
+      </div>
+      <div class="section-body">
+        <div class="drop-zone" id="drop-zone">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <h3>Drop files here or click to browse</h3>
+          <p>Upload your event documents and we'll extract the data</p>
+          <div class="supported">PDF, TXT, CSV, JSON, Markdown, HTML</div>
+          <input type="file" id="file-input" multiple accept=".pdf,.txt,.csv,.json,.md,.html,.htm,.tsv,.ics" style="display:none">
+        </div>
+
+        <div class="url-input-row">
+          <input type="url" id="url-input" placeholder="Paste a URL (event page, schedule link, etc.)">
+          <button class="btn btn-secondary" id="btn-add-url">Add URL</button>
+        </div>
+
+        <div class="paste-area">
+          <label>Or paste content directly</label>
+          <textarea id="paste-input" placeholder="Paste event info, schedule, team roster, attendee list, meeting notes..."></textarea>
+          <div style="text-align:right;margin-top:6px;">
+            <button class="btn btn-secondary" id="btn-add-paste" style="font-size:12px;padding:6px 12px;">Add Pasted Content</button>
+          </div>
+        </div>
+
+        <div class="source-list" id="source-list"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" data-goto="1">Back</button>
+          <button class="btn btn-primary" id="btn-step2-next" disabled>Process with AI</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ STEP 3: PROCESS ═══════════════════ -->
+  <div class="step-panel" id="panel-3">
+    <div class="section">
+      <div class="section-header">
+        <h2>Processing Sources</h2>
+      </div>
+      <div class="section-body">
+        <div class="process-status" id="process-status">
+          <span class="spinner"></span>
+          Analyzing your sources and extracting event data...
+        </div>
+        <div id="process-log" style="font-size:12px;color:var(--text-secondary);max-height:300px;overflow-y:auto;font-family:monospace;line-height:1.8;"></div>
+        <div class="btn-row" id="process-btn-row" style="display:none">
+          <button class="btn btn-secondary" data-goto="2">Back to Sources</button>
+          <button class="btn btn-primary" id="btn-step3-next">Review Results</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ STEP 4: REVIEW & EXPORT ═══════════════════ -->
+  <div class="step-panel" id="panel-4">
+    <div class="section">
+      <div class="section-header">
+        <h2>Review & Edit</h2>
+      </div>
+      <div class="section-body">
+        <div class="stats-row" id="stats-row"></div>
+
+        <div class="preview-tabs" id="preview-tabs">
+          <button class="preview-tab active" data-tab="event">Event</button>
+          <button class="preview-tab" data-tab="team">Team</button>
+          <button class="preview-tab" data-tab="players">Key Players</button>
+          <button class="preview-tab" data-tab="schedule">Schedule</button>
+          <button class="preview-tab" data-tab="json">Raw JSON</button>
+        </div>
+
+        <div id="preview-content"></div>
+
+        <div class="btn-row" style="margin-top:24px;">
+          <button class="btn btn-secondary" data-goto="2">Add More Sources</button>
+          <button class="btn btn-danger" id="btn-reprocess">Re-process</button>
+          <button class="btn btn-success" id="btn-export">Export & Deploy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export modal -->
+    <div class="section" id="export-section" style="display:none">
+      <div class="section-header">
+        <h2>Export</h2>
+      </div>
+      <div class="section-body">
+        <div class="export-options">
+          <div class="export-option" id="export-download-html">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <h3>Download index.html</h3>
+            <p>Complete app file ready to deploy</p>
+          </div>
+          <div class="export-option" id="export-download-json">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <h3>Download config.json</h3>
+            <p>Just the event data for manual integration</p>
+          </div>
+          <div class="export-option" id="export-push-github">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+            </svg>
+            <h3>Push to GitHub</h3>
+            <p>Update your live app directly</p>
+          </div>
+          <div class="export-option" id="export-clipboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <h3>Copy Config JSON</h3>
+            <p>Copy to clipboard to paste anywhere</p>
+          </div>
+        </div>
+
+        <!-- GitHub push form (hidden by default) -->
+        <div id="github-push-form" style="display:none;margin-top:16px;">
+          <div class="edit-card">
+            <div class="field-row">
+              <div class="field">
+                <label>GitHub Personal Access Token</label>
+                <input type="password" id="gh-token" placeholder="github_pat_...">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Repository (owner/repo)</label>
+                <input type="text" id="gh-repo" placeholder="username/event-companion">
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top:12px;">
+              <button class="btn btn-secondary" id="btn-cancel-push">Cancel</button>
+              <button class="btn btn-success" id="btn-do-push">Push to GitHub</button>
+            </div>
+            <div id="gh-push-status" style="margin-top:10px;font-size:12px;display:none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PDF.js from CDN for client-side PDF parsing
+     ═══════════════════════════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════════ */
+const adminState = {
+  apiKey: localStorage.getItem('admin_api_key') || '',
+  apiKeyVerified: false,
+  sources: [],       // { id, type, name, content, size }
+  config: null,      // The generated CONFIG object
+  currentStep: 1,
+  activeTab: 'event'
+};
+
+let sourceIdCounter = 0;
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP NAVIGATION
+   ═══════════════════════════════════════════════════════════════════ */
+function goToStep(n) {
+  adminState.currentStep = n;
+  document.querySelectorAll('.step').forEach(s => {
+    const sn = parseInt(s.dataset.step);
+    s.classList.toggle('active', sn === n);
+    s.classList.toggle('completed', sn < n);
+  });
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${n}`).classList.add('active');
+}
+
+document.querySelectorAll('.step').forEach(s => {
+  s.addEventListener('click', () => {
+    const n = parseInt(s.dataset.step);
+    if (n < adminState.currentStep || (n === 2 && adminState.apiKeyVerified) || (n === 4 && adminState.config)) {
+      goToStep(n);
+    }
+  });
+});
+
+document.querySelectorAll('[data-goto]').forEach(btn => {
+  btn.addEventListener('click', () => goToStep(parseInt(btn.dataset.goto)));
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 1: API KEY
+   ═══════════════════════════════════════════════════════════════════ */
+const apiKeyInput = document.getElementById('api-key');
+const apiKeyStatus = document.getElementById('api-key-status');
+const btnVerify = document.getElementById('btn-verify-key');
+const btnStep1Next = document.getElementById('btn-step1-next');
+
+// Restore saved key
+if (adminState.apiKey) {
+  apiKeyInput.value = adminState.apiKey;
+}
+
+btnVerify.addEventListener('click', async () => {
+  const key = apiKeyInput.value.trim();
+  if (!key) return;
+
+  btnVerify.disabled = true;
+  btnVerify.textContent = 'Verifying...';
+  apiKeyStatus.style.display = 'none';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Say ok' }]
+      })
+    });
+
+    if (resp.ok || resp.status === 200) {
+      adminState.apiKey = key;
+      adminState.apiKeyVerified = true;
+      localStorage.setItem('admin_api_key', key);
+      apiKeyStatus.textContent = 'Valid';
+      apiKeyStatus.className = 'api-key-status valid';
+      btnStep1Next.disabled = false;
+    } else {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+  } catch (e) {
+    apiKeyStatus.textContent = 'Invalid: ' + e.message;
+    apiKeyStatus.className = 'api-key-status invalid';
+    adminState.apiKeyVerified = false;
+    btnStep1Next.disabled = true;
+  } finally {
+    apiKeyStatus.style.display = 'inline-block';
+    btnVerify.disabled = false;
+    btnVerify.textContent = 'Verify';
+  }
+});
+
+btnStep1Next.addEventListener('click', () => {
+  if (adminState.apiKeyVerified) goToStep(2);
+});
+
+// Load existing config from current index.html — skip AI, go straight to editing
+document.getElementById('btn-load-existing').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-load-existing');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+
+  try {
+    const resp = await fetch('./index.html');
+    if (!resp.ok) throw new Error('Could not load index.html');
+    const html = await resp.text();
+
+    // Extract the CONFIG block
+    const match = html.match(/const CONFIG = (\{[\s\S]*?\n\});/);
+    if (!match) throw new Error('Could not find CONFIG in index.html');
+
+    // Evaluate CONFIG safely using Function constructor
+    const config = new Function('return ' + match[1])();
+
+    if (!config.event) throw new Error('Invalid CONFIG — missing event data');
+
+    adminState.config = config;
+    goToStep(4);
+    renderReview();
+
+  } catch (e) {
+    alert('Error loading config: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Edit Existing Config';
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 2: ADD SOURCES
+   ═══════════════════════════════════════════════════════════════════ */
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const sourceListEl = document.getElementById('source-list');
+const sourceCountEl = document.getElementById('source-count');
+const btnStep2Next = document.getElementById('btn-step2-next');
+
+function updateSourceCount() {
+  const n = adminState.sources.length;
+  sourceCountEl.textContent = `${n} source${n !== 1 ? 's' : ''}`;
+  btnStep2Next.disabled = n === 0;
+}
+
+function addSource(source) {
+  source.id = ++sourceIdCounter;
+  adminState.sources.push(source);
+  renderSources();
+}
+
+function removeSource(id) {
+  adminState.sources = adminState.sources.filter(s => s.id !== id);
+  renderSources();
+}
+
+function renderSources() {
+  updateSourceCount();
+  sourceListEl.innerHTML = adminState.sources.map(s => `
+    <div class="source-item" data-id="${s.id}">
+      <div class="source-icon ${s.type}">${iconForType(s.type)}</div>
+      <div class="source-info">
+        <div class="source-name">${escHtml(s.name)}</div>
+        <div class="source-meta">${s.type.toUpperCase()} &middot; ${formatBytes(s.size)}</div>
+      </div>
+      <button class="source-remove" data-remove="${s.id}">&times;</button>
+    </div>
+  `).join('');
+}
+
+function iconForType(t) {
+  const icons = { pdf: 'PDF', txt: 'TXT', json: 'JSON', csv: 'CSV', url: 'URL', paste: 'TXT', doc: 'DOC', md: 'MD', html: 'HTM', ics: 'ICS' };
+  return icons[t] || 'FILE';
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Drag and drop
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => {
+  handleFiles(fileInput.files);
+  fileInput.value = '';
+});
+
+async function handleFiles(fileList) {
+  for (const file of fileList) {
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (ext === 'pdf') {
+      try {
+        const arrayBuf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+        let text = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const tc = await page.getTextContent();
+          text += tc.items.map(item => item.str).join(' ') + '\n\n';
+        }
+        addSource({ type: 'pdf', name: file.name, content: text.trim(), size: file.size });
+      } catch (err) {
+        alert(`Could not read PDF "${file.name}": ${err.message}`);
+      }
+    } else if (['txt', 'csv', 'tsv', 'json', 'md', 'html', 'htm', 'ics'].includes(ext)) {
+      const text = await file.text();
+      addSource({ type: ext === 'htm' ? 'html' : ext, name: file.name, content: text, size: file.size });
+    } else {
+      alert(`Unsupported file type: .${ext}`);
+    }
+  }
+}
+
+// URL input
+document.getElementById('btn-add-url').addEventListener('click', async () => {
+  const urlInput = document.getElementById('url-input');
+  const url = urlInput.value.trim();
+  if (!url) return;
+
+  try {
+    new URL(url);
+  } catch {
+    alert('Please enter a valid URL');
+    return;
+  }
+
+  // We'll store the URL and let Claude fetch it during processing (CORS won't let us fetch arbitrary URLs)
+  addSource({
+    type: 'url',
+    name: url,
+    content: `[URL to fetch and analyze: ${url}]`,
+    size: url.length
+  });
+  urlInput.value = '';
+});
+
+// Paste input
+document.getElementById('btn-add-paste').addEventListener('click', () => {
+  const ta = document.getElementById('paste-input');
+  const text = ta.value.trim();
+  if (!text) return;
+
+  const preview = text.substring(0, 60).replace(/\n/g, ' ') + (text.length > 60 ? '...' : '');
+  addSource({
+    type: 'paste',
+    name: `Pasted: "${preview}"`,
+    content: text,
+    size: text.length
+  });
+  ta.value = '';
+});
+
+// Remove source (delegated)
+sourceListEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-remove]');
+  if (btn) removeSource(parseInt(btn.dataset.remove));
+});
+
+// Step 2 Next
+btnStep2Next.addEventListener('click', () => {
+  if (adminState.sources.length > 0) {
+    goToStep(3);
+    processWithAI();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 3: PROCESS WITH AI
+   ═══════════════════════════════════════════════════════════════════ */
+const processStatusEl = document.getElementById('process-status');
+const processLogEl = document.getElementById('process-log');
+const processBtnRow = document.getElementById('process-btn-row');
+
+function logProcess(msg) {
+  const line = document.createElement('div');
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  processLogEl.appendChild(line);
+  processLogEl.scrollTop = processLogEl.scrollHeight;
+}
+
+async function processWithAI() {
+  processStatusEl.className = 'process-status';
+  processStatusEl.innerHTML = '<span class="spinner"></span> Analyzing your sources and extracting event data...';
+  processLogEl.innerHTML = '';
+  processBtnRow.style.display = 'none';
+
+  logProcess('Preparing source content...');
+
+  // Build the content from all sources
+  let allContent = '';
+  for (const src of adminState.sources) {
+    allContent += `\n\n--- SOURCE: ${src.name} (${src.type}) ---\n${src.content}`;
+  }
+
+  // Truncate if very large (Claude context window limits)
+  const MAX_CHARS = 180000;
+  if (allContent.length > MAX_CHARS) {
+    allContent = allContent.substring(0, MAX_CHARS) + '\n\n[Content truncated due to size]';
+    logProcess(`Content truncated to ${MAX_CHARS} characters.`);
+  }
+
+  logProcess(`Total content: ${formatBytes(allContent.length)} from ${adminState.sources.length} source(s).`);
+  logProcess('Sending to Claude API for extraction...');
+
+  const systemPrompt = `You are an expert data extraction assistant for an "Event Companion" progressive web app. Your job is to analyze source content (event documents, schedules, team rosters, etc.) and extract structured data.
+
+You must return ONLY valid JSON matching this exact schema (no markdown, no explanation — just the JSON object):
+
+{
+  "event": {
+    "name": "Event Name",
+    "dates": "Human-readable date range",
+    "location": "Venue, City, State",
+    "timezone": "IANA timezone like America/Los_Angeles",
+    "landingPageUrl": "https://...",
+    "tagline": "Short tagline",
+    "description": "1-3 sentence description for the booth/presence"
+  },
+  "company": {
+    "name": "Your Company Name",
+    "website": "https://..."
+  },
+  "team": [
+    {
+      "id": "lowercase_short_id",
+      "name": "Full Name",
+      "title": "Job Title",
+      "email": "email@example.com",
+      "phone": "+1-555-000-0000",
+      "linkedin": "https://linkedin.com/in/...",
+      "photo": "https://... (direct image URL if found in sources, otherwise empty)"
+    }
+  ],
+  "keyPlayers": [
+    {
+      "name": "Full Name",
+      "title": "Job Title",
+      "company": "Company Name",
+      "photo": "",
+      "priority": "high|medium|low",
+      "notes": "Context about this person, relationship, goals for this meeting"
+    }
+  ],
+  "schedule": [
+    {
+      "date": "YYYY-MM-DD",
+      "start": "HH:MM",
+      "end": "HH:MM",
+      "title": "Item Title",
+      "type": "meeting|session|booth|team",
+      "location": "Where",
+      "assignees": ["team_member_id"],
+      "notes": "Relevant context"
+    }
+  ]
+}
+
+Rules:
+- Extract ALL data you can find, even partial info. Make reasonable inferences.
+- Team member IDs should be lowercase first initial + last name (e.g., "schen" for Sarah Chen).
+- Schedule assignees reference team member IDs. If you can't determine who, use all team members.
+- Times must be 24-hour "HH:MM" format. Dates must be "YYYY-MM-DD".
+- Prioritize key players by relevance: decision-makers and active deals = high, warm leads = medium, others = low.
+- For fields you truly cannot determine, use sensible placeholders like "TBD" or empty strings.
+- IMPORTANT for photos: If the source content contains image URLs (e.g., from HTML pages, team directories, or documents), extract and include them in the "photo" field. Look for <img> tags, profile picture URLs, headshot URLs, avatar URLs, etc. For LinkedIn URLs, include the linkedin profile URL in the "linkedin" field — the admin UI will handle photo extraction separately. Prefer direct image URLs (ending in .jpg, .png, .webp) when available.
+- type must be one of: "meeting", "session", "booth", "team"
+- Return ONLY the JSON. No markdown fences, no explanations.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': adminState.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: `Extract structured event data from these sources:\n\n${allContent}`
+        }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+
+    logProcess('Response received. Parsing...');
+
+    const data = await resp.json();
+    const text = data.content[0]?.text || '';
+
+    // Parse JSON (handle potential markdown fences)
+    let jsonStr = text.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    }
+
+    const config = JSON.parse(jsonStr);
+
+    // Validate minimum structure
+    if (!config.event || !config.schedule) {
+      throw new Error('AI returned incomplete data. Missing event or schedule.');
+    }
+
+    // Ensure arrays exist
+    config.team = config.team || [];
+    config.keyPlayers = config.keyPlayers || [];
+    config.schedule = config.schedule || [];
+    config.company = config.company || { name: 'TBD', website: '' };
+
+    adminState.config = config;
+
+    logProcess(`Extracted: ${config.team.length} team members, ${config.keyPlayers.length} key players, ${config.schedule.length} schedule items.`);
+
+    processStatusEl.className = 'process-status success';
+    processStatusEl.innerHTML = 'Done! Data extracted successfully.';
+    processBtnRow.style.display = 'flex';
+
+  } catch (e) {
+    logProcess(`ERROR: ${e.message}`);
+    processStatusEl.className = 'process-status error';
+    processStatusEl.innerHTML = `Error: ${escHtml(e.message)}`;
+    processBtnRow.style.display = 'flex';
+    document.getElementById('btn-step3-next').style.display = 'none';
+  }
+}
+
+document.getElementById('btn-step3-next').addEventListener('click', () => {
+  if (adminState.config) {
+    goToStep(4);
+    renderReview();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STEP 4: REVIEW & EXPORT
+   ═══════════════════════════════════════════════════════════════════ */
+const previewContentEl = document.getElementById('preview-content');
+
+document.getElementById('preview-tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.preview-tab');
+  if (!tab) return;
+  document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  adminState.activeTab = tab.dataset.tab;
+  renderPreviewTab();
+});
+
+document.getElementById('btn-reprocess').addEventListener('click', () => {
+  goToStep(3);
+  processWithAI();
+});
+
+function renderReview() {
+  const c = adminState.config;
+  if (!c) return;
+
+  // Stats
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${c.team.length}</div><div class="stat-label">Team Members</div></div>
+    <div class="stat-card"><div class="stat-value">${c.keyPlayers.length}</div><div class="stat-label">Key Players</div></div>
+    <div class="stat-card"><div class="stat-value">${c.schedule.length}</div><div class="stat-label">Schedule Items</div></div>
+    <div class="stat-card"><div class="stat-value">${new Set(c.schedule.map(s=>s.date)).size}</div><div class="stat-label">Event Days</div></div>
+  `;
+
+  // Update tab counts
+  document.querySelectorAll('.preview-tab').forEach(t => {
+    const tab = t.dataset.tab;
+    const counts = { team: c.team.length, players: c.keyPlayers.length, schedule: c.schedule.length };
+    if (counts[tab] !== undefined) {
+      let countSpan = t.querySelector('.count');
+      if (!countSpan) { countSpan = document.createElement('span'); countSpan.className = 'count'; t.appendChild(countSpan); }
+      countSpan.textContent = counts[tab];
+    }
+  });
+
+  renderPreviewTab();
+}
+
+function renderPreviewTab() {
+  const c = adminState.config;
+  if (!c) return;
+
+  const tab = adminState.activeTab;
+
+  if (tab === 'json') {
+    previewContentEl.innerHTML = `<div class="config-preview">${escHtml(JSON.stringify(c, null, 2))}</div>`;
+    return;
+  }
+
+  if (tab === 'event') {
+    previewContentEl.innerHTML = `
+      <div class="edit-card">
+        <div class="field-row">
+          <div class="field"><label>Event Name</label><input data-path="event.name" value="${escAttr(c.event.name)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Dates</label><input data-path="event.dates" value="${escAttr(c.event.dates)}"></div>
+          <div class="field"><label>Location</label><input data-path="event.location" value="${escAttr(c.event.location)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Timezone</label><input data-path="event.timezone" value="${escAttr(c.event.timezone)}"></div>
+          <div class="field"><label>Landing Page URL</label><input data-path="event.landingPageUrl" value="${escAttr(c.event.landingPageUrl)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Tagline</label><input data-path="event.tagline" value="${escAttr(c.event.tagline)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Description</label><textarea data-path="event.description" rows="3">${escHtml(c.event.description)}</textarea></div>
+        </div>
+      </div>
+      <div class="edit-card">
+        <div class="edit-card-header"><h4>Company</h4></div>
+        <div class="field-row">
+          <div class="field"><label>Name</label><input data-path="company.name" value="${escAttr(c.company.name)}"></div>
+          <div class="field"><label>Website</label><input data-path="company.website" value="${escAttr(c.company.website)}"></div>
+        </div>
+      </div>
+    `;
+    bindEditFields();
+    return;
+  }
+
+  if (tab === 'team') {
+    let html = c.team.map((t, i) => {
+      const hasPhoto = t.photo && t.photo.length > 0;
+      const photoPreviewContent = hasPhoto
+        ? `<img src="${escAttr(t.photo)}" alt="${escAttr(t.name)}">`
+        : `<span class="photo-placeholder">${t.name ? initials(t.name) : '?'}</span>`;
+      const hasLinkedIn = t.linkedin && t.linkedin.includes('linkedin.com');
+      return `
+      <div class="edit-card">
+        <div class="edit-card-header">
+          <h4>${escHtml(t.name || 'New Member')}</h4>
+          <button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" onclick="removeArrayItem('team',${i})">Remove</button>
+        </div>
+        <div class="photo-upload-area">
+          <div class="photo-preview" data-photo-idx="${i}" title="Click to upload photo">
+            ${photoPreviewContent}
+            <div class="photo-overlay">Upload</div>
+            <input type="file" accept="image/*" data-photo-upload="${i}" style="display:none">
+          </div>
+          <div class="photo-controls">
+            <span class="photo-label">Headshot</span>
+            <div class="photo-btn-row">
+              <button class="photo-btn" onclick="document.querySelector('[data-photo-upload=&quot;${i}&quot;]').click()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload
+              </button>
+              ${hasLinkedIn ? `
+              <button class="photo-btn linkedin-btn" onclick="fetchLinkedInPhoto(${i})">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                From LinkedIn
+              </button>` : ''}
+              ${hasPhoto ? `<button class="photo-btn remove-photo-btn" onclick="removeTeamPhoto(${i})">Remove</button>` : ''}
+            </div>
+            <input class="photo-url-input" placeholder="Or paste image URL..." data-photo-url="${i}" value="${hasPhoto && !t.photo.startsWith('data:') ? escAttr(t.photo) : ''}">
+            <div class="photo-status" id="photo-status-${i}"></div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>ID</label><input data-arr="team" data-idx="${i}" data-field="id" value="${escAttr(t.id)}"></div>
+          <div class="field"><label>Name</label><input data-arr="team" data-idx="${i}" data-field="name" value="${escAttr(t.name)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Title</label><input data-arr="team" data-idx="${i}" data-field="title" value="${escAttr(t.title)}"></div>
+          <div class="field"><label>Email</label><input data-arr="team" data-idx="${i}" data-field="email" value="${escAttr(t.email)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Phone</label><input data-arr="team" data-idx="${i}" data-field="phone" value="${escAttr(t.phone)}"></div>
+          <div class="field"><label>LinkedIn URL</label><input data-arr="team" data-idx="${i}" data-field="linkedin" value="${escAttr(t.linkedin)}"></div>
+        </div>
+      </div>`;
+    }).join('');
+    html += `<button class="btn btn-secondary" onclick="addTeamMember()" style="width:100%;">+ Add Team Member</button>`;
+    previewContentEl.innerHTML = html;
+    bindArrayFields();
+    bindPhotoUploads();
+    return;
+  }
+
+  if (tab === 'players') {
+    let html = c.keyPlayers.map((p, i) => `
+      <div class="edit-card">
+        <div class="edit-card-header">
+          <h4>${escHtml(p.name || 'New Player')}</h4>
+          <button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" onclick="removeArrayItem('keyPlayers',${i})">Remove</button>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Name</label><input data-arr="keyPlayers" data-idx="${i}" data-field="name" value="${escAttr(p.name)}"></div>
+          <div class="field"><label>Title</label><input data-arr="keyPlayers" data-idx="${i}" data-field="title" value="${escAttr(p.title)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Company</label><input data-arr="keyPlayers" data-idx="${i}" data-field="company" value="${escAttr(p.company)}"></div>
+          <div class="field"><label>Priority</label>
+            <select data-arr="keyPlayers" data-idx="${i}" data-field="priority">
+              <option value="high" ${p.priority==='high'?'selected':''}>High</option>
+              <option value="medium" ${p.priority==='medium'?'selected':''}>Medium</option>
+              <option value="low" ${p.priority==='low'?'selected':''}>Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>LinkedIn URL</label><input data-arr="keyPlayers" data-idx="${i}" data-field="linkedin" value="${escAttr(p.linkedin || '')}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Notes</label><textarea data-arr="keyPlayers" data-idx="${i}" data-field="notes" rows="2">${escHtml(p.notes)}</textarea></div>
+        </div>
+      </div>
+    `).join('');
+    html += `<button class="btn btn-secondary" onclick="addKeyPlayer()" style="width:100%;">+ Add Key Player</button>`;
+    previewContentEl.innerHTML = html;
+    bindArrayFields();
+    return;
+  }
+
+  if (tab === 'schedule') {
+    // Group by date
+    const dates = [...new Set(c.schedule.map(s => s.date))].sort();
+    let html = '';
+    for (const date of dates) {
+      const items = c.schedule.filter(s => s.date === date).sort((a, b) => a.start.localeCompare(b.start));
+      const dt = new Date(date + 'T12:00:00');
+      const label = dt.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      html += `<h3 style="font-size:14px;margin:16px 0 8px;color:var(--accent);">${label}</h3>`;
+      for (const item of items) {
+        const idx = c.schedule.indexOf(item);
+        const teamOpts = c.team.map(t => `<option value="${t.id}" ${item.assignees.includes(t.id)?'selected':''}>${t.name}</option>`).join('');
+        html += `
+          <div class="edit-card">
+            <div class="edit-card-header">
+              <h4>${escHtml(item.title)}</h4>
+              <button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" onclick="removeArrayItem('schedule',${idx})">Remove</button>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Title</label><input data-arr="schedule" data-idx="${idx}" data-field="title" value="${escAttr(item.title)}"></div>
+              <div class="field" style="max-width:120px"><label>Type</label>
+                <select data-arr="schedule" data-idx="${idx}" data-field="type">
+                  <option value="meeting" ${item.type==='meeting'?'selected':''}>Meeting</option>
+                  <option value="session" ${item.type==='session'?'selected':''}>Session</option>
+                  <option value="booth" ${item.type==='booth'?'selected':''}>Booth</option>
+                  <option value="team" ${item.type==='team'?'selected':''}>Team</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Date</label><input type="date" data-arr="schedule" data-idx="${idx}" data-field="date" value="${item.date}"></div>
+              <div class="field"><label>Start</label><input type="time" data-arr="schedule" data-idx="${idx}" data-field="start" value="${item.start}"></div>
+              <div class="field"><label>End</label><input type="time" data-arr="schedule" data-idx="${idx}" data-field="end" value="${item.end}"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Location</label><input data-arr="schedule" data-idx="${idx}" data-field="location" value="${escAttr(item.location)}"></div>
+              <div class="field"><label>Assignees</label>
+                <select multiple data-arr="schedule" data-idx="${idx}" data-field="assignees" style="min-height:60px">${teamOpts}</select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Notes</label><textarea data-arr="schedule" data-idx="${idx}" data-field="notes" rows="2">${escHtml(item.notes)}</textarea></div>
+            </div>
+          </div>
+        `;
+      }
+    }
+    html += `<button class="btn btn-secondary" onclick="addScheduleItem()" style="width:100%;">+ Add Schedule Item</button>`;
+    previewContentEl.innerHTML = html;
+    bindArrayFields();
+    return;
+  }
+}
+
+function escAttr(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+// Bind simple dot-path fields (e.g., "event.name")
+function bindEditFields() {
+  document.querySelectorAll('[data-path]').forEach(el => {
+    el.addEventListener('input', () => {
+      const parts = el.dataset.path.split('.');
+      let obj = adminState.config;
+      for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+      obj[parts[parts.length - 1]] = el.value;
+    });
+  });
+}
+
+// Bind array fields (e.g., team[0].name)
+function bindArrayFields() {
+  document.querySelectorAll('[data-arr]').forEach(el => {
+    const arr = el.dataset.arr;
+    const idx = parseInt(el.dataset.idx);
+    const field = el.dataset.field;
+    el.addEventListener('input', () => {
+      if (field === 'assignees') {
+        adminState.config[arr][idx][field] = [...el.selectedOptions].map(o => o.value);
+      } else {
+        adminState.config[arr][idx][field] = el.value;
+      }
+    });
+    el.addEventListener('change', () => {
+      if (field === 'assignees') {
+        adminState.config[arr][idx][field] = [...el.selectedOptions].map(o => o.value);
+      } else {
+        adminState.config[arr][idx][field] = el.value;
+      }
+    });
+  });
+}
+
+// Add/remove helpers
+window.removeArrayItem = function(arr, idx) {
+  adminState.config[arr].splice(idx, 1);
+  renderReview();
+  renderPreviewTab();
+};
+
+window.addTeamMember = function() {
+  adminState.config.team.push({ id: '', name: '', title: '', email: '', phone: '', linkedin: '', photo: '' });
+  renderReview();
+  renderPreviewTab();
+};
+
+window.addKeyPlayer = function() {
+  adminState.config.keyPlayers.push({ name: '', title: '', company: '', photo: '', priority: 'medium', notes: '', linkedin: '' });
+  renderReview();
+  renderPreviewTab();
+};
+
+window.addScheduleItem = function() {
+  const lastDate = adminState.config.schedule.length > 0 ? adminState.config.schedule[adminState.config.schedule.length - 1].date : new Date().toISOString().split('T')[0];
+  adminState.config.schedule.push({
+    date: lastDate, start: '09:00', end: '10:00', title: 'New Item', type: 'meeting',
+    location: '', assignees: adminState.config.team.map(t => t.id), notes: ''
+  });
+  renderReview();
+  renderPreviewTab();
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   PHOTO HANDLING — upload, URL paste, LinkedIn fetch
+   ═══════════════════════════════════════════════════════════════════ */
+function initials(name) {
+  return (name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function bindPhotoUploads() {
+  // File upload via hidden input
+  document.querySelectorAll('[data-photo-upload]').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const idx = parseInt(input.dataset.photoUpload);
+      const file = e.target.files[0];
+      if (!file) return;
+      processImageFile(file, idx);
+    });
+  });
+
+  // Click the preview circle to trigger file input
+  document.querySelectorAll('.photo-preview[data-photo-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = el.dataset.photoIdx;
+      document.querySelector(`[data-photo-upload="${idx}"]`).click();
+    });
+  });
+
+  // URL paste input
+  document.querySelectorAll('[data-photo-url]').forEach(input => {
+    let debounce;
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        const idx = parseInt(input.dataset.photoUrl);
+        const url = input.value.trim();
+        if (!url) return;
+        setPhotoStatus(idx, 'Loading...', 'fetching');
+        loadImageFromUrl(url, idx);
+      }, 600);
+    });
+  });
+}
+
+function processImageFile(file, idx) {
+  if (!file.type.startsWith('image/')) {
+    setPhotoStatus(idx, 'Not an image file', 'error');
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    setPhotoStatus(idx, 'Image too large (max 5 MB)', 'error');
+    return;
+  }
+  setPhotoStatus(idx, 'Processing...', 'fetching');
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    // Resize to reasonable dimensions for the PWA
+    resizeImage(e.target.result, 256, (dataUrl) => {
+      adminState.config.team[idx].photo = dataUrl;
+      setPhotoStatus(idx, 'Photo set from file', 'success');
+      renderPreviewTab();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadImageFromUrl(url, idx) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    const size = 256;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    // Crop to square from center
+    const min = Math.min(img.width, img.height);
+    const sx = (img.width - min) / 2;
+    const sy = (img.height - min) / 2;
+    ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    adminState.config.team[idx].photo = dataUrl;
+    setPhotoStatus(idx, 'Photo set from URL', 'success');
+    renderPreviewTab();
+  };
+  img.onerror = () => {
+    // Direct load failed — store the URL raw and let the app try at runtime
+    adminState.config.team[idx].photo = url;
+    setPhotoStatus(idx, 'Saved URL (could not preview — may be blocked by CORS)', 'success');
+    renderPreviewTab();
+  };
+  img.src = url;
+}
+
+function resizeImage(dataUrl, maxSize, callback) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = maxSize;
+    canvas.height = maxSize;
+    const ctx = canvas.getContext('2d');
+    // Crop to square from center
+    const min = Math.min(img.width, img.height);
+    const sx = (img.width - min) / 2;
+    const sy = (img.height - min) / 2;
+    ctx.drawImage(img, sx, sy, min, min, 0, 0, maxSize, maxSize);
+    callback(canvas.toDataURL('image/jpeg', 0.85));
+  };
+  img.src = dataUrl;
+}
+
+function setPhotoStatus(idx, msg, cls) {
+  const el = document.getElementById(`photo-status-${idx}`);
+  if (el) {
+    el.textContent = msg;
+    el.className = 'photo-status ' + (cls || '');
+  }
+}
+
+window.removeTeamPhoto = function(idx) {
+  adminState.config.team[idx].photo = '';
+  renderPreviewTab();
+};
+
+window.fetchLinkedInPhoto = async function(idx) {
+  const member = adminState.config.team[idx];
+  if (!member || !member.linkedin) return;
+
+  setPhotoStatus(idx, 'Asking Claude to find photo...', 'fetching');
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': adminState.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: `I need a professional headshot photo URL for ${member.name}, ${member.title}. Their LinkedIn is: ${member.linkedin}
+
+I cannot scrape LinkedIn directly from a browser. Please suggest the best approach to get their photo. If you can construct or infer a likely public photo URL, provide it. Otherwise, explain how to get it manually.
+
+Reply with ONLY a JSON object: {"photoUrl": "https://..." , "instructions": "..."}.
+If you cannot determine a URL, set photoUrl to "" and provide instructions.`
+        }]
+      })
+    });
+
+    if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+
+    const data = await resp.json();
+    const text = data.content[0]?.text || '';
+    let jsonStr = text.trim();
+    if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+
+    const result = JSON.parse(jsonStr);
+
+    if (result.photoUrl) {
+      loadImageFromUrl(result.photoUrl, idx);
+    } else {
+      setPhotoStatus(idx, result.instructions || 'Could not find photo URL. Try uploading manually.', 'error');
+    }
+  } catch (e) {
+    setPhotoStatus(idx, `Could not fetch: ${e.message}. Upload the photo manually instead.`, 'error');
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   EXPORT
+   ═══════════════════════════════════════════════════════════════════ */
+document.getElementById('btn-export').addEventListener('click', () => {
+  document.getElementById('export-section').style.display = 'block';
+  document.getElementById('export-section').scrollIntoView({ behavior: 'smooth' });
+});
+
+// Download index.html
+document.getElementById('export-download-html').addEventListener('click', async () => {
+  const configJSON = JSON.stringify(adminState.config, null, 2);
+
+  // Fetch the current index.html template
+  let template;
+  try {
+    const resp = await fetch('./index.html');
+    template = await resp.text();
+  } catch {
+    alert('Could not load index.html template. Make sure this admin page is served from the same directory.');
+    return;
+  }
+
+  // Replace the CONFIG block
+  const configRegex = /const CONFIG = \{[\s\S]*?\n\};/;
+  const newConfig = `const CONFIG = ${configJSON};`;
+  const newHtml = template.replace(configRegex, newConfig);
+
+  downloadFile('index.html', newHtml, 'text/html');
+});
+
+// Download config.json
+document.getElementById('export-download-json').addEventListener('click', () => {
+  downloadFile('config.json', JSON.stringify(adminState.config, null, 2), 'application/json');
+});
+
+// Copy to clipboard
+document.getElementById('export-clipboard').addEventListener('click', () => {
+  navigator.clipboard.writeText(JSON.stringify(adminState.config, null, 2)).then(() => {
+    const el = document.getElementById('export-clipboard');
+    const h3 = el.querySelector('h3');
+    h3.textContent = 'Copied!';
+    setTimeout(() => h3.textContent = 'Copy Config JSON', 1500);
+  });
+});
+
+// GitHub push
+document.getElementById('export-push-github').addEventListener('click', () => {
+  document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
+  document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || '';
+  document.getElementById('github-push-form').style.display = 'block';
+});
+
+document.getElementById('btn-cancel-push').addEventListener('click', () => {
+  document.getElementById('github-push-form').style.display = 'none';
+});
+
+document.getElementById('btn-do-push').addEventListener('click', async () => {
+  const token = document.getElementById('gh-token').value.trim();
+  const repo = document.getElementById('gh-repo').value.trim();
+  const statusEl = document.getElementById('gh-push-status');
+
+  if (!token || !repo) {
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Please fill in both fields.';
+    return;
+  }
+
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--accent)';
+  statusEl.textContent = 'Fetching current file...';
+
+  try {
+    // Get current index.html from repo
+    const getResp = await fetch(`https://api.github.com/repos/${repo}/contents/index.html`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+
+    let sha = '';
+    let template = '';
+
+    if (getResp.ok) {
+      const fileData = await getResp.json();
+      sha = fileData.sha;
+      template = atob(fileData.content.replace(/\n/g, ''));
+    } else {
+      // File doesn't exist, fetch local template
+      const localResp = await fetch('./index.html');
+      template = await localResp.text();
+    }
+
+    // Replace CONFIG
+    const configJSON = JSON.stringify(adminState.config, null, 2);
+    const configRegex = /const CONFIG = \{[\s\S]*?\n\};/;
+    const newHtml = template.replace(configRegex, `const CONFIG = ${configJSON};`);
+
+    statusEl.textContent = 'Pushing updated index.html...';
+
+    const putBody = {
+      message: 'Update event config via Admin UI',
+      content: btoa(unescape(encodeURIComponent(newHtml)))
+    };
+    if (sha) putBody.sha = sha;
+
+    const putResp = await fetch(`https://api.github.com/repos/${repo}/contents/index.html`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(putBody)
+    });
+
+    if (!putResp.ok) {
+      const err = await putResp.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${putResp.status}`);
+    }
+
+    // Save credentials for next time
+    localStorage.setItem('gh_token', token);
+    localStorage.setItem('gh_repo', repo);
+
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = 'Pushed successfully! Your live app will update in 1-2 minutes.';
+
+  } catch (e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+});
+
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
