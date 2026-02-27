@@ -867,7 +867,7 @@
             <div class="field-row">
               <div class="field">
                 <label>Repository (owner/repo)</label>
-                <input type="text" id="gh-repo" placeholder="username/event-companion">
+                <input type="text" id="gh-repo" value="ringclaudia/event-companion" placeholder="username/event-companion">
               </div>
             </div>
             <div class="btn-row" style="margin-top:12px;">
@@ -1879,7 +1879,7 @@ document.getElementById('export-clipboard').addEventListener('click', () => {
 // GitHub push
 document.getElementById('export-push-github').addEventListener('click', () => {
   document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
-  document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || '';
+  document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || 'ringclaudia/event-companion';
   document.getElementById('github-push-form').style.display = 'block';
 });
 
@@ -1889,7 +1889,9 @@ document.getElementById('btn-cancel-push').addEventListener('click', () => {
 
 document.getElementById('btn-do-push').addEventListener('click', async () => {
   const token = document.getElementById('gh-token').value.trim();
-  const repo = document.getElementById('gh-repo').value.trim();
+  let repo = document.getElementById('gh-repo').value.trim();
+  // Strip full GitHub URL down to owner/repo
+  repo = repo.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
   const statusEl = document.getElementById('gh-push-status');
 
   if (!token || !repo) {
