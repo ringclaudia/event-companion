@@ -1252,7 +1252,8 @@ You must return ONLY valid JSON matching this exact schema (no markdown, no expl
       "name": "Full Name",
       "title": "Job Title",
       "company": "Company Name",
-      "photo": "",
+      "linkedin": "https://linkedin.com/in/... (if found in sources, otherwise empty)",
+      "photo": "https://... (direct image URL if found in sources, otherwise empty)",
       "priority": "high|medium|low",
       "notes": "Context about this person, relationship, goals for this meeting"
     }
@@ -1278,7 +1279,7 @@ Rules:
 - Times must be 24-hour "HH:MM" format. Dates must be "YYYY-MM-DD".
 - Prioritize key players by relevance: decision-makers and active deals = high, warm leads = medium, others = low.
 - For fields you truly cannot determine, use sensible placeholders like "TBD" or empty strings.
-- IMPORTANT for photos: If the source content contains image URLs (e.g., from HTML pages, team directories, or documents), extract and include them in the "photo" field. Look for <img> tags, profile picture URLs, headshot URLs, avatar URLs, etc. For LinkedIn URLs, include the linkedin profile URL in the "linkedin" field — the admin UI will handle photo extraction separately. Prefer direct image URLs (ending in .jpg, .png, .webp) when available.
+- IMPORTANT for photos: If the source content contains image URLs (e.g., from HTML pages, team directories, or documents), extract and include them in the "photo" field for BOTH team members AND keyPlayers. Look for <img> tags, profile picture URLs, headshot URLs, avatar URLs, etc. For LinkedIn URLs, include the linkedin profile URL in the "linkedin" field for BOTH team members AND keyPlayers — the admin UI will handle photo extraction separately. Prefer direct image URLs (ending in .jpg, .png, .webp) when available.
 - type must be one of: "meeting", "session", "booth", "team"
 - Return ONLY the JSON. No markdown fences, no explanations.`;
 
@@ -1503,11 +1504,42 @@ function renderPreviewTab() {
   }
 
   if (tab === 'players') {
-    let html = c.keyPlayers.map((p, i) => `
+    let html = c.keyPlayers.map((p, i) => {
+      const pk = `kp-${i}`;
+      const hasPhoto = p.photo && p.photo.length > 0;
+      const photoPreviewContent = hasPhoto
+        ? `<img src="${escAttr(p.photo)}" alt="${escAttr(p.name)}">`
+        : `<span class="photo-placeholder">${p.name ? initials(p.name) : '?'}</span>`;
+      const hasLinkedIn = p.linkedin && p.linkedin.includes('linkedin.com');
+      return `
       <div class="edit-card">
         <div class="edit-card-header">
           <h4>${escHtml(p.name || 'New Player')}</h4>
           <button class="btn btn-danger" style="font-size:11px;padding:4px 10px;" onclick="removeArrayItem('keyPlayers',${i})">Remove</button>
+        </div>
+        <div class="photo-upload-area">
+          <div class="photo-preview" data-photo-idx="${pk}" title="Click to upload photo">
+            ${photoPreviewContent}
+            <div class="photo-overlay">Upload</div>
+            <input type="file" accept="image/*" data-photo-upload="${pk}" style="display:none">
+          </div>
+          <div class="photo-controls">
+            <span class="photo-label">Headshot</span>
+            <div class="photo-btn-row">
+              <button class="photo-btn" onclick="document.querySelector('[data-photo-upload=&quot;${pk}&quot;]').click()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload
+              </button>
+              ${hasLinkedIn ? `
+              <button class="photo-btn linkedin-btn" onclick="fetchLinkedInPhoto('${pk}')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                From LinkedIn
+              </button>` : ''}
+              ${hasPhoto ? `<button class="photo-btn remove-photo-btn" onclick="removePhoto('${pk}')">Remove</button>` : ''}
+            </div>
+            <input class="photo-url-input" placeholder="Or paste image URL..." data-photo-url="${pk}" value="${hasPhoto && !p.photo.startsWith('data:') ? escAttr(p.photo) : ''}">
+            <div class="photo-status" id="photo-status-${pk}"></div>
+          </div>
         </div>
         <div class="field-row">
           <div class="field"><label>Name</label><input data-arr="keyPlayers" data-idx="${i}" data-field="name" value="${escAttr(p.name)}"></div>
@@ -1529,11 +1561,12 @@ function renderPreviewTab() {
         <div class="field-row">
           <div class="field"><label>Notes</label><textarea data-arr="keyPlayers" data-idx="${i}" data-field="notes" rows="2">${escHtml(p.notes)}</textarea></div>
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
     html += `<button class="btn btn-secondary" onclick="addKeyPlayer()" style="width:100%;">+ Add Key Player</button>`;
     previewContentEl.innerHTML = html;
     bindArrayFields();
+    bindPhotoUploads();
     return;
   }
 
@@ -1670,18 +1703,18 @@ function bindPhotoUploads() {
   // File upload via hidden input
   document.querySelectorAll('[data-photo-upload]').forEach(input => {
     input.addEventListener('change', (e) => {
-      const idx = parseInt(input.dataset.photoUpload);
+      const key = input.dataset.photoUpload;
       const file = e.target.files[0];
       if (!file) return;
-      processImageFile(file, idx);
+      processImageFile(file, key);
     });
   });
 
   // Click the preview circle to trigger file input
   document.querySelectorAll('.photo-preview[data-photo-idx]').forEach(el => {
     el.addEventListener('click', () => {
-      const idx = el.dataset.photoIdx;
-      document.querySelector(`[data-photo-upload="${idx}"]`).click();
+      const key = el.dataset.photoIdx;
+      document.querySelector(`[data-photo-upload="${key}"]`).click();
     });
   });
 
@@ -1691,40 +1724,48 @@ function bindPhotoUploads() {
     input.addEventListener('input', () => {
       clearTimeout(debounce);
       debounce = setTimeout(() => {
-        const idx = parseInt(input.dataset.photoUrl);
+        const key = input.dataset.photoUrl;
         const url = input.value.trim();
         if (!url) return;
-        setPhotoStatus(idx, 'Loading...', 'fetching');
-        loadImageFromUrl(url, idx);
+        setPhotoStatus(key, 'Loading...', 'fetching');
+        loadImageFromUrl(url, key);
       }, 600);
     });
   });
 }
 
-function processImageFile(file, idx) {
+// Resolve a photo key like "3" or "kp-2" to {collection, index}
+function resolvePhotoKey(key) {
+  const s = String(key);
+  if (s.startsWith('kp-')) return { collection: 'keyPlayers', index: parseInt(s.slice(3)) };
+  return { collection: 'team', index: parseInt(s) };
+}
+
+function processImageFile(file, key) {
   if (!file.type.startsWith('image/')) {
-    setPhotoStatus(idx, 'Not an image file', 'error');
+    setPhotoStatus(key, 'Not an image file', 'error');
     return;
   }
   if (file.size > 5 * 1024 * 1024) {
-    setPhotoStatus(idx, 'Image too large (max 5 MB)', 'error');
+    setPhotoStatus(key, 'Image too large (max 5 MB)', 'error');
     return;
   }
-  setPhotoStatus(idx, 'Processing...', 'fetching');
+  setPhotoStatus(key, 'Processing...', 'fetching');
 
   const reader = new FileReader();
   reader.onload = (e) => {
-    // Resize to reasonable dimensions for the PWA
+    const { collection, index } = resolvePhotoKey(key);
     resizeImage(e.target.result, 256, (dataUrl) => {
-      adminState.config.team[idx].photo = dataUrl;
-      setPhotoStatus(idx, 'Photo set from file', 'success');
+      adminState.config[collection][index].photo = dataUrl;
+      setPhotoStatus(key, 'Photo set from file', 'success');
       renderPreviewTab();
     });
   };
   reader.readAsDataURL(file);
 }
 
-function loadImageFromUrl(url, idx) {
+function loadImageFromUrl(url, key) {
+  const { collection, index } = resolvePhotoKey(key);
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
@@ -1733,20 +1774,18 @@ function loadImageFromUrl(url, idx) {
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
-    // Crop to square from center
     const min = Math.min(img.width, img.height);
     const sx = (img.width - min) / 2;
     const sy = (img.height - min) / 2;
     ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-    adminState.config.team[idx].photo = dataUrl;
-    setPhotoStatus(idx, 'Photo set from URL', 'success');
+    adminState.config[collection][index].photo = dataUrl;
+    setPhotoStatus(key, 'Photo set from URL', 'success');
     renderPreviewTab();
   };
   img.onerror = () => {
-    // Direct load failed — store the URL raw and let the app try at runtime
-    adminState.config.team[idx].photo = url;
-    setPhotoStatus(idx, 'Saved URL (could not preview — may be blocked by CORS)', 'success');
+    adminState.config[collection][index].photo = url;
+    setPhotoStatus(key, 'Saved URL (could not preview — may be blocked by CORS)', 'success');
     renderPreviewTab();
   };
   img.src = url;
@@ -1777,16 +1816,20 @@ function setPhotoStatus(idx, msg, cls) {
   }
 }
 
-window.removeTeamPhoto = function(idx) {
-  adminState.config.team[idx].photo = '';
+window.removePhoto = function(key) {
+  const { collection, index } = resolvePhotoKey(key);
+  adminState.config[collection][index].photo = '';
   renderPreviewTab();
 };
+// Keep backward compat alias
+window.removeTeamPhoto = function(idx) { removePhoto(idx); };
 
-window.fetchLinkedInPhoto = async function(idx) {
-  const member = adminState.config.team[idx];
+window.fetchLinkedInPhoto = async function(key) {
+  const { collection, index } = resolvePhotoKey(key);
+  const member = adminState.config[collection][index];
   if (!member || !member.linkedin) return;
 
-  setPhotoStatus(idx, 'Asking Claude to find photo...', 'fetching');
+  setPhotoStatus(key, 'Asking Claude to find photo...', 'fetching');
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1822,12 +1865,12 @@ If you cannot determine a URL, set photoUrl to "" and provide instructions.`
     const result = JSON.parse(jsonStr);
 
     if (result.photoUrl) {
-      loadImageFromUrl(result.photoUrl, idx);
+      loadImageFromUrl(result.photoUrl, key);
     } else {
-      setPhotoStatus(idx, result.instructions || 'Could not find photo URL. Try uploading manually.', 'error');
+      setPhotoStatus(key, result.instructions || 'Could not find photo URL. Try uploading manually.', 'error');
     }
   } catch (e) {
-    setPhotoStatus(idx, `Could not fetch: ${e.message}. Upload the photo manually instead.`, 'error');
+    setPhotoStatus(key, `Could not fetch: ${e.message}. Upload the photo manually instead.`, 'error');
   }
 };
 
