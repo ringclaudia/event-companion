@@ -1950,8 +1950,9 @@ document.getElementById('btn-do-push').addEventListener('click', async () => {
 
   try {
     // Get current index.html from repo
+    const authPrefix = token.startsWith('github_pat_') ? 'Bearer' : 'token';
     const getResp = await fetch(`https://api.github.com/repos/${repo}/contents/index.html`, {
-      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+      headers: { 'Authorization': `${authPrefix} ${token}`, 'Accept': 'application/vnd.github+json' }
     });
 
     let sha = '';
@@ -1983,7 +1984,7 @@ document.getElementById('btn-do-push').addEventListener('click', async () => {
     const putResp = await fetch(`https://api.github.com/repos/${repo}/contents/index.html`, {
       method: 'PUT',
       headers: {
-        'Authorization': `token ${token}`,
+        'Authorization': `${authPrefix} ${token}`,
         'Accept': 'application/vnd.github+json',
         'Content-Type': 'application/json'
       },
