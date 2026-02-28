@@ -855,6 +855,59 @@
           </div>
         </div>
 
+        <!-- Lead database setup -->
+        <div class="edit-card" style="margin-top:16px;">
+          <h4 style="margin:0 0 4px;">Lead Database (Google Sheets)</h4>
+          <p style="font-size:12px;color:var(--text-secondary);margin:0 0 12px;">Lets your team sync captured leads to a shared Google Sheet in real-time.</p>
+          <details id="gsheet-setup-instructions" style="margin-bottom:12px;">
+            <summary style="font-size:12px;font-weight:600;cursor:pointer;color:var(--accent);">Setup instructions (one-time, ~2 min)</summary>
+            <ol style="font-size:11px;color:var(--text-secondary);margin:8px 0;padding-left:20px;line-height:1.6;">
+              <li>Create a new Google Sheet</li>
+              <li>Add these headers in Row 1: <code style="background:var(--bg);padding:1px 4px;border-radius:3px;">id | name | title | company | email | phone | linkedin | priority | source | notes | capturedBy | timestamp</code></li>
+              <li>Go to <strong>Extensions &gt; Apps Script</strong></li>
+              <li>Delete the default code and paste:<br>
+                <button class="btn btn-secondary" style="font-size:10px;padding:2px 8px;margin:4px 0;" onclick="navigator.clipboard.writeText(document.getElementById('gas-code').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Script',1200)">Copy Script</button>
+                <pre id="gas-code" style="background:var(--bg);padding:8px;border-radius:6px;font-size:10px;overflow-x:auto;margin:4px 0;white-space:pre-wrap;">function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);
+  var headers = data[0];
+  var rows = data.slice(1).map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+  return ContentService.createTextOutput(JSON.stringify(rows)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var payload = JSON.parse(e.postData.contents);
+  var leads = Array.isArray(payload) ? payload : [payload];
+  leads.forEach(function(lead) {
+    // Skip duplicates by id
+    var ids = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues().flat();
+    if (lead.id && ids.indexOf(lead.id) !== -1) return;
+    var row = headers.map(function(h) { return lead[h] !== undefined ? lead[h] : ''; });
+    sheet.appendRow(row);
+  });
+  return ContentService.createTextOutput(JSON.stringify({status:'ok',count:leads.length})).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+              </li>
+              <li>Click <strong>Deploy &gt; New deployment</strong></li>
+              <li>Type = <strong>Web app</strong>, Execute as = <strong>Me</strong>, Who has access = <strong>Anyone</strong></li>
+              <li>Click <strong>Deploy</strong>, authorize when prompted, then copy the <strong>Web app URL</strong> below</li>
+            </ol>
+          </details>
+          <div class="field-row">
+            <div class="field">
+              <label>Google Sheet Web App URL</label>
+              <input type="text" id="gsheet-url" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+          </div>
+        </div>
+
         <!-- GitHub push form (hidden by default) -->
         <div id="github-push-form" style="display:none;margin-top:16px;">
           <div class="edit-card">
@@ -1877,6 +1930,20 @@ If you cannot determine a URL, set photoUrl to "" and provide instructions.`
 /* ═══════════════════════════════════════════════════════════════════
    EXPORT
    ═══════════════════════════════════════════════════════════════════ */
+
+// Restore Google Sheet URL from localStorage
+document.getElementById('gsheet-url').value = localStorage.getItem('gsheet_url') || '';
+document.getElementById('gsheet-url').addEventListener('input', (e) => {
+  localStorage.setItem('gsheet_url', e.target.value.trim());
+});
+
+// Inject credentials into config before any export action
+function prepareConfigForExport() {
+  const gsheetUrl = document.getElementById('gsheet-url').value.trim();
+  if (gsheetUrl) adminState.config.googleSheetUrl = gsheetUrl;
+  if (adminState.apiKey) adminState.config.anthropicApiKey = adminState.apiKey;
+}
+
 document.getElementById('btn-export').addEventListener('click', () => {
   document.getElementById('export-section').style.display = 'block';
   document.getElementById('export-section').scrollIntoView({ behavior: 'smooth' });
@@ -1884,6 +1951,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
 
 // Download index.html
 document.getElementById('export-download-html').addEventListener('click', async () => {
+  prepareConfigForExport();
   const configJSON = JSON.stringify(adminState.config, null, 2);
 
   // Fetch the current index.html template
@@ -1906,11 +1974,13 @@ document.getElementById('export-download-html').addEventListener('click', async 
 
 // Download config.json
 document.getElementById('export-download-json').addEventListener('click', () => {
+  prepareConfigForExport();
   downloadFile('config.json', JSON.stringify(adminState.config, null, 2), 'application/json');
 });
 
 // Copy to clipboard
 document.getElementById('export-clipboard').addEventListener('click', () => {
+  prepareConfigForExport();
   navigator.clipboard.writeText(JSON.stringify(adminState.config, null, 2)).then(() => {
     const el = document.getElementById('export-clipboard');
     const h3 = el.querySelector('h3');
@@ -1931,6 +2001,7 @@ document.getElementById('btn-cancel-push').addEventListener('click', () => {
 });
 
 document.getElementById('btn-do-push').addEventListener('click', async () => {
+  prepareConfigForExport();
   const token = document.getElementById('gh-token').value.trim();
   let repo = document.getElementById('gh-repo').value.trim();
   // Strip full GitHub URL down to owner/repo

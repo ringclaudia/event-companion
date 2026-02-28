@@ -1065,7 +1065,9 @@ const CONFIG = {
       ],
       "notes": "Early close day - focus on final demos and content capture"
     }
-  ]
+  ],
+  "googleSheetUrl": "",
+  "anthropicApiKey": ""
 };
 
 /* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
@@ -1733,16 +1735,94 @@ document.getElementById('profile-list').addEventListener('click', (e) => {
 /* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
    LEADS â scan, capture, manual entry, local storage
    âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
-function getLeads() {
+// ── Lead Storage: localStorage + Google Sheets sync ──
+
+function getLocalLeads() {
   try { return JSON.parse(localStorage.getItem('event_leads') || '[]'); }
   catch { return []; }
 }
 
-function saveLeads(leads) {
+function saveLocalLeads(leads) {
   localStorage.setItem('event_leads', JSON.stringify(leads));
 }
 
+// Generate a short unique ID for dedup
+function leadId() {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+// Combined getter: returns local leads (Sheet leads are merged in on sync)
+function getLeads() {
+  return getLocalLeads();
+}
+
+function saveLeads(leads) {
+  saveLocalLeads(leads);
+}
+
+// Push a single lead to Google Sheet (fire-and-forget)
+function pushLeadToSheet(lead) {
+  const url = CONFIG.googleSheetUrl;
+  if (!url) return;
+  fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(lead)
+  }).then(() => {
+    // Mark as synced
+    const leads = getLocalLeads();
+    const match = leads.find(l => l.id === lead.id);
+    if (match) { match._synced = true; saveLocalLeads(leads); }
+  }).catch(() => { /* offline — will sync later */ });
+}
+
+// Pull all leads from Google Sheet and merge with local
+async function syncLeadsFromSheet() {
+  const url = CONFIG.googleSheetUrl;
+  if (!url) return;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    const remote = await resp.json();
+    if (!Array.isArray(remote)) return;
+
+    const local = getLocalLeads();
+    const localIds = new Set(local.map(l => l.id));
+    const deletedIds = new Set(JSON.parse(localStorage.getItem('event_leads_deleted') || '[]'));
+
+    // Add any remote leads we don't have locally (skip deleted ones)
+    let added = 0;
+    for (const r of remote) {
+      if (r.id && !localIds.has(r.id) && !deletedIds.has(r.id)) {
+        r._synced = true;
+        local.push(r);
+        added++;
+      }
+    }
+
+    // Push any unsynced local leads to Sheet
+    const unsynced = local.filter(l => !l._synced);
+    if (unsynced.length > 0) {
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(unsynced)
+      }).then(() => {
+        const leads = getLocalLeads();
+        leads.forEach(l => l._synced = true);
+        saveLocalLeads(leads);
+      }).catch(() => {});
+    }
+
+    if (added > 0) {
+      saveLocalLeads(local);
+      renderLeads();
+    }
+  } catch { /* offline */ }
+}
+
 function renderLeads() {
+  // Kick off a background sync from Google Sheet
+  syncLeadsFromSheet();
+
   const leads = getLeads();
   document.getElementById('lead-count').textContent = leads.length > 0
     ? `${leads.length} lead${leads.length !== 1 ? 's' : ''} captured`
@@ -1781,7 +1861,13 @@ function renderLeads() {
 
 window.deleteLead = function(idx) {
   const leads = getLeads();
-  leads.splice(idx, 1);
+  const removed = leads.splice(idx, 1)[0];
+  // Track deleted IDs so sheet sync doesn't re-add them
+  if (removed && removed.id) {
+    const deleted = JSON.parse(localStorage.getItem('event_leads_deleted') || '[]');
+    deleted.push(removed.id);
+    localStorage.setItem('event_leads_deleted', JSON.stringify(deleted));
+  }
   saveLeads(leads);
   renderLeads();
 };
@@ -1799,6 +1885,7 @@ document.getElementById('lf-cancel').addEventListener('click', () => {
 
 document.getElementById('lf-save').addEventListener('click', () => {
   const lead = {
+    id: leadId(),
     name: document.getElementById('lf-name').value.trim(),
     title: document.getElementById('lf-title').value.trim(),
     company: document.getElementById('lf-company').value.trim(),
@@ -1817,6 +1904,7 @@ document.getElementById('lf-save').addEventListener('click', () => {
   const leads = getLeads();
   leads.push(lead);
   saveLeads(leads);
+  pushLeadToSheet(lead);
   leadForm.classList.remove('open');
   renderLeads();
 });
@@ -1914,12 +2002,12 @@ document.getElementById('cam-capture').addEventListener('click', async () => {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     const base64 = dataUrl.split(',')[1];
 
-    // Check if user has an API key stored in admin
-    let apiKey = localStorage.getItem('admin_api_key') || '';
+    // Use API key from config (baked in by admin) or fall back to localStorage
+    const apiKey = CONFIG.anthropicApiKey || localStorage.getItem('admin_api_key') || '';
     if (!apiKey) {
-      apiKey = prompt('Enter your Anthropic API key to enable badge scanning.\n(This is saved locally in your browser.)');
-      if (!apiKey) { closeCamera(); return; }
-      localStorage.setItem('admin_api_key', apiKey);
+      closeCamera();
+      alert('Badge scanning is not configured. Ask your admin to set up the Anthropic API key in the admin panel.');
+      return;
     }
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
