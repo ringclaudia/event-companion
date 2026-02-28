@@ -695,18 +695,22 @@
       <div class="lead-form" id="lead-form">
         <h3 id="lead-form-title">New Lead</h3>
         <div class="lf-row">
-          <div class="lf-field"><label>Name</label><input id="lf-name"></div>
+          <div class="lf-field"><label>Event</label><input id="lf-event" readonly style="opacity:0.7;"></div>
+        </div>
+        <div class="lf-row">
+          <div class="lf-field"><label>First Name</label><input id="lf-firstName"></div>
+          <div class="lf-field"><label>Last Name</label><input id="lf-lastName"></div>
         </div>
         <div class="lf-row">
           <div class="lf-field"><label>Title</label><input id="lf-title"></div>
           <div class="lf-field"><label>Company</label><input id="lf-company"></div>
         </div>
         <div class="lf-row">
-          <div class="lf-field"><label>Email</label><input type="email" id="lf-email"></div>
-          <div class="lf-field"><label>Phone</label><input type="tel" id="lf-phone"></div>
+          <div class="lf-field"><label>LinkedIn</label><input id="lf-linkedin" placeholder="https://linkedin.com/in/..."></div>
         </div>
         <div class="lf-row">
-          <div class="lf-field"><label>LinkedIn</label><input id="lf-linkedin" placeholder="https://linkedin.com/in/..."></div>
+          <div class="lf-field"><label>Email</label><input type="email" id="lf-email"></div>
+          <div class="lf-field"><label>Phone</label><input type="tel" id="lf-phone"></div>
         </div>
         <div class="lf-row">
           <div class="lf-field">
@@ -1841,11 +1845,13 @@ function renderLeads() {
     const time = l.timestamp ? new Date(l.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
     const priorityColors = { hot: '#ef4444', warm: '#f59e0b', cold: '#6b7280' };
     const priorityColor = priorityColors[l.priority] || '#6b7280';
+    // Support both old 'name' field and new firstName/lastName
+    const displayName = [l.firstName, l.lastName].filter(Boolean).join(' ') || l.name || '';
     return `
       <div class="lead-card">
-        <div class="lc-avatar" style="background:${priorityColor}">${initials(l.name || '?')}</div>
+        <div class="lc-avatar" style="background:${priorityColor}">${initials(displayName || '?')}</div>
         <div class="lc-info">
-          <div class="lc-name">${l.name || 'Unknown'}</div>
+          <div class="lc-name">${displayName || 'Unknown'}</div>
           <div class="lc-detail">${[l.title, l.company].filter(Boolean).join(' â ')}</div>
           <div class="lc-time">${time}${l.source ? ' Â· ' + l.source : ''}</div>
         </div>
@@ -1886,20 +1892,20 @@ document.getElementById('lf-cancel').addEventListener('click', () => {
 document.getElementById('lf-save').addEventListener('click', () => {
   const lead = {
     id: leadId(),
-    name: document.getElementById('lf-name').value.trim(),
+    eventName: document.getElementById('lf-event').value.trim(),
+    firstName: document.getElementById('lf-firstName').value.trim(),
+    lastName: document.getElementById('lf-lastName').value.trim(),
     title: document.getElementById('lf-title').value.trim(),
     company: document.getElementById('lf-company').value.trim(),
+    linkedin: document.getElementById('lf-linkedin').value.trim(),
     email: document.getElementById('lf-email').value.trim(),
     phone: document.getElementById('lf-phone').value.trim(),
-    linkedin: document.getElementById('lf-linkedin').value.trim(),
     priority: document.getElementById('lf-priority').value,
     source: document.getElementById('lf-source').value,
     notes: document.getElementById('lf-notes').value.trim(),
     capturedBy: state.activeProfile,
     timestamp: Date.now()
   };
-
-  if (!lead.name) { alert('Name is required'); return; }
 
   const leads = getLeads();
   leads.push(lead);
@@ -1910,20 +1916,23 @@ document.getElementById('lf-save').addEventListener('click', () => {
 });
 
 function clearLeadForm() {
-  ['lf-name','lf-title','lf-company','lf-email','lf-phone','lf-linkedin','lf-notes'].forEach(id => {
+  ['lf-firstName','lf-lastName','lf-title','lf-company','lf-linkedin','lf-email','lf-phone','lf-notes'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('lf-event').value = CONFIG.event.name || '';
   document.getElementById('lf-priority').value = 'warm';
   document.getElementById('lf-source').value = 'booth';
 }
 
 function populateLeadForm(data) {
-  document.getElementById('lf-name').value = data.name || '';
+  document.getElementById('lf-event').value = CONFIG.event.name || '';
+  document.getElementById('lf-firstName').value = data.firstName || '';
+  document.getElementById('lf-lastName').value = data.lastName || '';
   document.getElementById('lf-title').value = data.title || '';
   document.getElementById('lf-company').value = data.company || '';
+  document.getElementById('lf-linkedin').value = data.linkedin || '';
   document.getElementById('lf-email').value = data.email || '';
   document.getElementById('lf-phone').value = data.phone || '';
-  document.getElementById('lf-linkedin').value = data.linkedin || '';
   document.getElementById('lf-notes').value = data.notes || '';
 }
 
@@ -2025,7 +2034,7 @@ document.getElementById('cam-capture').addEventListener('click', async () => {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-            { type: 'text', text: 'Extract contact info from this badge/business card photo. Return ONLY a JSON object with these fields (use empty string if not visible): {"name":"","title":"","company":"","email":"","phone":"","linkedin":"","notes":""}. No markdown, no explanation.' }
+            { type: 'text', text: 'Extract contact info from this badge/business card photo. Return ONLY a JSON object with these fields (use empty string if not visible): {"firstName":"","lastName":"","title":"","company":"","linkedin":"","email":"","phone":"","notes":""}. Split the name into first and last. If you see a LinkedIn URL or QR code pointing to LinkedIn, include it. No markdown, no explanation.' }
           ]
         }]
       })
@@ -2082,14 +2091,32 @@ function parseVCard(text) {
     const m = text.match(new RegExp(key + '[;:]([^\\r\\n]+)', 'i'));
     return m ? m[1].replace(/^.*?:/, '').trim() : '';
   };
-  const nameParts = get('FN') || get('N');
+  // vCard N field is: LastName;FirstName;Middle;Prefix;Suffix
+  const nField = get('N');
+  let firstName = '', lastName = '';
+  if (nField && nField.includes(';')) {
+    const parts = nField.split(';');
+    lastName = (parts[0] || '').trim();
+    firstName = (parts[1] || '').trim();
+  } else {
+    // Fall back to FN (full name) — split on first space
+    const fn = (get('FN') || nField).replace(/;/g, ' ').trim();
+    const spaceIdx = fn.indexOf(' ');
+    if (spaceIdx > 0) {
+      firstName = fn.slice(0, spaceIdx);
+      lastName = fn.slice(spaceIdx + 1);
+    } else {
+      firstName = fn;
+    }
+  }
   return {
-    name: nameParts.replace(/;/g, ' ').trim(),
+    firstName,
+    lastName,
     title: get('TITLE'),
     company: get('ORG'),
+    linkedin: (text.match(/linkedin\.com[^\r\n]*/i) || [''])[0],
     email: get('EMAIL'),
     phone: get('TEL'),
-    linkedin: (text.match(/linkedin\.com[^\r\n]*/i) || [''])[0],
     notes: ''
   };
 }

@@ -863,7 +863,7 @@
             <summary style="font-size:12px;font-weight:600;cursor:pointer;color:var(--accent);">Setup instructions (one-time, ~2 min)</summary>
             <ol style="font-size:11px;color:var(--text-secondary);margin:8px 0;padding-left:20px;line-height:1.6;">
               <li>Create a new Google Sheet</li>
-              <li>Add these headers in Row 1: <code style="background:var(--bg);padding:1px 4px;border-radius:3px;">id | name | title | company | email | phone | linkedin | priority | source | notes | capturedBy | timestamp</code></li>
+              <li>Add these headers in Row 1: <code style="background:var(--bg);padding:1px 4px;border-radius:3px;">id | eventName | firstName | lastName | title | company | linkedin | email | phone | priority | source | notes | capturedBy | timestamp</code></li>
               <li>Go to <strong>Extensions &gt; Apps Script</strong></li>
               <li>Delete the default code and paste:<br>
                 <button class="btn btn-secondary" style="font-size:10px;padding:2px 8px;margin:4px 0;" onclick="navigator.clipboard.writeText(document.getElementById('gas-code').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Script',1200)">Copy Script</button>
