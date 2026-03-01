@@ -953,13 +953,16 @@ if (window.pdfjsLib) {
 const adminState = {
   apiKey: localStorage.getItem('admin_api_key') || '',
   apiKeyVerified: false,
-  sources: [],       // { id, type, name, content, size }
-  config: null,      // The generated CONFIG object
+  sources: JSON.parse(localStorage.getItem('admin_sources') || '[]'),
+  config: JSON.parse(localStorage.getItem('admin_config') || 'null'),
   currentStep: 1,
   activeTab: 'event'
 };
 
-let sourceIdCounter = 0;
+let sourceIdCounter = adminState.sources.reduce((max, s) => Math.max(max, s.id || 0), 0);
+
+function persistSources() { localStorage.setItem('admin_sources', JSON.stringify(adminState.sources)); }
+function persistConfig() { if (adminState.config) localStorage.setItem('admin_config', JSON.stringify(adminState.config)); }
 
 /* ═══════════════════════════════════════════════════════════════════
    STEP NAVIGATION
@@ -987,6 +990,17 @@ document.querySelectorAll('.step').forEach(s => {
 document.querySelectorAll('[data-goto]').forEach(btn => {
   btn.addEventListener('click', () => goToStep(parseInt(btn.dataset.goto)));
 });
+
+// Auto-resume: if we have a saved config, jump straight to review
+if (adminState.config && adminState.config.event) {
+  goToStep(4);
+  setTimeout(() => renderReview(), 0);
+}
+// If we have saved sources but no config, jump to sources step
+else if (adminState.sources.length > 0) {
+  goToStep(2);
+  setTimeout(() => renderSources(), 0);
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    STEP 1: API KEY
@@ -1073,6 +1087,7 @@ document.getElementById('btn-load-existing').addEventListener('click', async () 
     if (!config.event) throw new Error('Invalid CONFIG — missing event data');
 
     adminState.config = config;
+    persistConfig();
     goToStep(4);
     renderReview();
 
@@ -1102,11 +1117,13 @@ function updateSourceCount() {
 function addSource(source) {
   source.id = ++sourceIdCounter;
   adminState.sources.push(source);
+  persistSources();
   renderSources();
 }
 
 function removeSource(id) {
   adminState.sources = adminState.sources.filter(s => s.id !== id);
+  persistSources();
   renderSources();
 }
 
@@ -1297,6 +1314,8 @@ You must return ONLY valid JSON matching this exact schema (no markdown, no expl
       "email": "email@example.com",
       "phone": "+1-555-000-0000",
       "linkedin": "https://linkedin.com/in/...",
+      "twitter": "@handle or https://x.com/handle (if found, otherwise empty)",
+      "whatsapp": "+1234567890 (phone number for WhatsApp, if found, otherwise empty)",
       "photo": "https://... (direct image URL if found in sources, otherwise empty)"
     }
   ],
@@ -1384,8 +1403,11 @@ Rules:
     config.keyPlayers = config.keyPlayers || [];
     config.schedule = config.schedule || [];
     config.company = config.company || { name: 'TBD', website: '' };
+    // Ensure twitter/whatsapp fields exist on team members
+    config.team.forEach(t => { t.twitter = t.twitter || ''; t.whatsapp = t.whatsapp || ''; });
 
     adminState.config = config;
+    persistConfig();
 
     logProcess(`Extracted: ${config.team.length} team members, ${config.keyPlayers.length} key players, ${config.schedule.length} schedule items.`);
 
@@ -1547,6 +1569,10 @@ function renderPreviewTab() {
           <div class="field"><label>Phone</label><input data-arr="team" data-idx="${i}" data-field="phone" value="${escAttr(t.phone)}"></div>
           <div class="field"><label>LinkedIn URL</label><input data-arr="team" data-idx="${i}" data-field="linkedin" value="${escAttr(t.linkedin)}"></div>
         </div>
+        <div class="field-row">
+          <div class="field"><label>X / Twitter</label><input data-arr="team" data-idx="${i}" data-field="twitter" value="${escAttr(t.twitter || '')}" placeholder="@handle or https://x.com/handle"></div>
+          <div class="field"><label>WhatsApp</label><input data-arr="team" data-idx="${i}" data-field="whatsapp" value="${escAttr(t.whatsapp || '')}" placeholder="+1234567890"></div>
+        </div>
       </div>`;
     }).join('');
     html += `<button class="btn btn-secondary" onclick="addTeamMember()" style="width:100%;">+ Add Team Member</button>`;
@@ -1689,6 +1715,7 @@ function bindEditFields() {
       let obj = adminState.config;
       for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
       obj[parts[parts.length - 1]] = el.value;
+      persistConfig();
     });
   });
 }
@@ -1705,6 +1732,7 @@ function bindArrayFields() {
       } else {
         adminState.config[arr][idx][field] = el.value;
       }
+      persistConfig();
     });
     el.addEventListener('change', () => {
       if (field === 'assignees') {
@@ -1712,6 +1740,7 @@ function bindArrayFields() {
       } else {
         adminState.config[arr][idx][field] = el.value;
       }
+      persistConfig();
     });
   });
 }
@@ -1719,18 +1748,21 @@ function bindArrayFields() {
 // Add/remove helpers
 window.removeArrayItem = function(arr, idx) {
   adminState.config[arr].splice(idx, 1);
+  persistConfig();
   renderReview();
   renderPreviewTab();
 };
 
 window.addTeamMember = function() {
-  adminState.config.team.push({ id: '', name: '', title: '', email: '', phone: '', linkedin: '', photo: '' });
+  adminState.config.team.push({ id: '', name: '', title: '', email: '', phone: '', linkedin: '', twitter: '', whatsapp: '', photo: '' });
+  persistConfig();
   renderReview();
   renderPreviewTab();
 };
 
 window.addKeyPlayer = function() {
   adminState.config.keyPlayers.push({ name: '', title: '', company: '', photo: '', priority: 'medium', notes: '', linkedin: '' });
+  persistConfig();
   renderReview();
   renderPreviewTab();
 };
@@ -1810,6 +1842,7 @@ function processImageFile(file, key) {
     const { collection, index } = resolvePhotoKey(key);
     resizeImage(e.target.result, 256, (dataUrl) => {
       adminState.config[collection][index].photo = dataUrl;
+      persistConfig();
       setPhotoStatus(key, 'Photo set from file', 'success');
       renderPreviewTab();
     });
@@ -1833,11 +1866,13 @@ function loadImageFromUrl(url, key) {
     ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     adminState.config[collection][index].photo = dataUrl;
+    persistConfig();
     setPhotoStatus(key, 'Photo set from URL', 'success');
     renderPreviewTab();
   };
   img.onerror = () => {
     adminState.config[collection][index].photo = url;
+    persistConfig();
     setPhotoStatus(key, 'Saved URL (could not preview — may be blocked by CORS)', 'success');
     renderPreviewTab();
   };
@@ -1872,6 +1907,7 @@ function setPhotoStatus(idx, msg, cls) {
 window.removePhoto = function(key) {
   const { collection, index } = resolvePhotoKey(key);
   adminState.config[collection][index].photo = '';
+  persistConfig();
   renderPreviewTab();
 };
 // Keep backward compat alias
