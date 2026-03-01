@@ -599,7 +599,7 @@
     }
     .section-header:first-child { margin-top: 0; }
 
-    /* Ã¢ÂÂÃ¢ÂÂ Small mobile (360Ã¢ÂÂ400px) Ã¢ÂÂÃ¢ÂÂ */
+    /* Ã¢ÂÂÃ¢ÂÂ Small mobile (360–400px) Ã¢ÂÂÃ¢ÂÂ */
     @media (max-width: 400px) {
       .view { padding: 10px 12px 12px; }
       header { padding: 0 12px; }
@@ -866,7 +866,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 </script>
 <script>
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-   EVENT CONFIGURATION Ã¢ÂÂ Edit this block for each event
+   EVENT CONFIGURATION — Edit this block for each event
    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 const CONFIG = {
   "event": {
@@ -1171,7 +1171,7 @@ function getDays() {
   return days.map((d, i) => {
     const dt = new Date(d + 'T12:00:00');
     const label = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    return { date: d, label: `Day ${i + 1} Ã¢ÂÂ ${label}`, short: `Day ${i + 1}` };
+    return { date: d, label: `Day ${i + 1} — ${label}`, short: `Day ${i + 1}` };
   });
 }
 
@@ -1343,7 +1343,7 @@ function openGoogleCalendar(item) {
 // Ã¢ÂÂÃ¢ÂÂ Header Ã¢ÂÂÃ¢ÂÂ
 function renderHeader() {
   document.getElementById('header-event-name').textContent = CONFIG.event.name;
-  document.getElementById('header-event-meta').textContent = `${CONFIG.event.dates} ÃÂ· ${CONFIG.event.location}`;
+  document.getElementById('header-event-meta').textContent = `${CONFIG.event.dates} · ${CONFIG.event.location}`;
   const member = getTeamMember(state.activeProfile);
   document.getElementById('profile-btn').textContent = member ? initials(member.name) : '?';
 }
@@ -1379,7 +1379,7 @@ function renderSchedule() {
       <div class="next-up">
         <div class="next-up-label">Next Up</div>
         <div class="next-up-title">${nextItem.title}</div>
-        <div class="next-up-detail">${formatTime(nextItem.start)} Ã¢ÂÂ ${nextItem.location} ÃÂ· ${assigneeNames}</div>
+        <div class="next-up-detail">${formatTime(nextItem.start)} — ${nextItem.location} · ${assigneeNames}</div>
       </div>`;
   } else {
     nuc.innerHTML = '';
@@ -1431,7 +1431,7 @@ function renderSchedule() {
     const schedIdx = CONFIG.schedule.indexOf(item);
     return `
       <div class="schedule-item type-${item.type}">
-        <div class="si-time">${formatTime(item.start)} Ã¢ÂÂ ${formatTime(item.end)}</div>
+        <div class="si-time">${formatTime(item.start)} – ${formatTime(item.end)}</div>
         <div class="si-title">${item.title}</div>
         <div class="si-location">${item.location}</div>
         <div class="si-badges">
@@ -1494,7 +1494,7 @@ function showPlayerModal(idx) {
   const p = CONFIG.keyPlayers[idx];
   if (!p) return;
 
-  // Find related schedule items Ã¢ÂÂ meetings mentioning this person's name or company
+  // Find related schedule items — meetings mentioning this person's name or company
   const nameWords = p.name.toLowerCase().split(' ');
   const lastName = nameWords[nameWords.length - 1];
   const companyLower = p.company.toLowerCase();
@@ -1843,10 +1843,10 @@ document.getElementById('profile-list').addEventListener('click', (e) => {
   }
 });
 
-// (Card person pills removed Ã¢ÂÂ My Card shows logged-in user only)
+// (Card person pills removed — My Card shows logged-in user only)
 
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-   LEADS Ã¢ÂÂ scan, capture, manual entry, local storage
+   LEADS — scan, capture, manual entry, local storage
    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 // ââ Lead Storage: localStorage + Google Sheets sync ââ
 
@@ -1939,7 +1939,7 @@ function renderLeads() {
   const leads = getLeads();
   document.getElementById('lead-count').textContent = leads.length > 0
     ? `${leads.length} lead${leads.length !== 1 ? 's' : ''} captured`
-    : 'No leads captured yet Ã¢ÂÂ scan a badge or add one manually.';
+    : 'No leads captured yet — scan a badge or add one manually.';
 
   const list = document.getElementById('leads-list');
   if (leads.length === 0) {
@@ -1961,8 +1961,8 @@ function renderLeads() {
         <div class="lc-avatar" style="background:${priorityColor}">${initials(displayName || '?')}</div>
         <div class="lc-info">
           <div class="lc-name">${displayName || 'Unknown'}</div>
-          <div class="lc-detail">${[l.title, l.company].filter(Boolean).join(' Ã¢ÂÂ ')}</div>
-          <div class="lc-time">${time}${l.source ? ' ÃÂ· ' + l.source : ''}</div>
+          <div class="lc-detail">${[l.title, l.company].filter(Boolean).join(' — ')}</div>
+          <div class="lc-time">${time}${l.source ? ' · ' + l.source : ''}</div>
         </div>
         <div class="lc-actions">
           ${l.email ? `<a class="lc-btn" href="mailto:${l.email}" title="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg></a>` : ''}
@@ -2113,7 +2113,7 @@ document.getElementById('cam-capture').addEventListener('click', async () => {
     return;
   }
 
-  // Badge scan Ã¢ÂÂ use Claude Vision API
+  // Badge scan — use Claude Vision API
   document.getElementById('cam-processing').classList.add('show');
 
   try {
@@ -2151,10 +2151,10 @@ document.getElementById('cam-capture').addEventListener('click', async () => {
   }
 });
 
-// Simple QR decoder using canvas Ã¢ÂÂ uses the qrcode library already loaded
+// Simple QR decoder using canvas — uses the qrcode library already loaded
 function decodeQRFromImageData(imageData) {
   // Simple threshold-based QR detection
-  // For production, use jsQR library Ã¢ÂÂ here we do basic detection
+  // For production, use jsQR library — here we do basic detection
   try {
     const w = imageData.width, h = imageData.height;
     const d = imageData.data;
@@ -2215,7 +2215,7 @@ function parseVCard(text) {
 }
 
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-   INIT Ã¢ÂÂ show onboarding if no profile, otherwise render normally
+   INIT — show onboarding if no profile, otherwise render normally
    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 // PIN Gate
 function checkPinGate() {
@@ -2296,7 +2296,7 @@ function showOnboarding() {
 checkPinGate();
 
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-   SERVICE WORKER Ã¢ÂÂ Register, detect updates, prompt user
+   SERVICE WORKER — Register, detect updates, prompt user
    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 if ('serviceWorker' in navigator) {
   let refreshing = false;
@@ -2332,7 +2332,7 @@ if ('serviceWorker' in navigator) {
       showUpdateBanner();
     }
 
-    // New SW installing Ã¢ÂÂ listen for it to finish
+    // New SW installing — listen for it to finish
     registration.addEventListener('updatefound', () => {
       const newWorker = registration.installing;
       if (!newWorker) return;
@@ -2349,7 +2349,7 @@ if ('serviceWorker' in navigator) {
 }
 
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-   OFFLINE INDICATOR Ã¢ÂÂ Shows a red dot when connectivity drops
+   OFFLINE INDICATOR — Shows a red dot when connectivity drops
    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 const offlineDot = document.getElementById('offline-dot');
 function updateOnlineStatus() {
