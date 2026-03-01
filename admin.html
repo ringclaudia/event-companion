@@ -906,6 +906,12 @@ function doPost(e) {
               <input type="text" id="gsheet-url" placeholder="https://script.google.com/macros/s/.../exec">
             </div>
           </div>
+          <div class="field-row" style="margin-top:8px;">
+            <div class="field">
+              <label>Team PIN <span style="font-weight:400;opacity:0.6;">(required to open the app)</span></label>
+              <input type="text" id="team-pin" placeholder="e.g. 1234" maxlength="8" style="max-width:180px;">
+            </div>
+          </div>
         </div>
 
         <!-- GitHub push form (hidden by default) -->
@@ -1454,6 +1460,10 @@ function renderReview() {
   const c = adminState.config;
   if (!c) return;
 
+  // Populate export fields from config
+  if (c.googleSheetUrl) document.getElementById('gsheet-url').value = c.googleSheetUrl;
+  if (c.teamPin) document.getElementById('team-pin').value = c.teamPin;
+
   // Stats
   document.getElementById('stats-row').innerHTML = `
     <div class="stat-card"><div class="stat-value">${c.team.length}</div><div class="stat-label">Team Members</div></div>
@@ -1977,7 +1987,10 @@ document.getElementById('gsheet-url').addEventListener('input', (e) => {
 function prepareConfigForExport() {
   const gsheetUrl = document.getElementById('gsheet-url').value.trim();
   if (gsheetUrl) adminState.config.googleSheetUrl = gsheetUrl;
-  if (adminState.apiKey) adminState.config.anthropicApiKey = adminState.apiKey;
+  const teamPin = document.getElementById('team-pin').value.trim();
+  adminState.config.teamPin = teamPin;
+  // API key is now server-side (Vercel env var) — do NOT embed in CONFIG
+  delete adminState.config.anthropicApiKey;
 }
 
 document.getElementById('btn-export').addEventListener('click', () => {

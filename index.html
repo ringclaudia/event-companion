@@ -465,6 +465,30 @@
     .onboarding-list .onb-name { font-size: 15px; font-weight: 700; }
     .onboarding-list .onb-title { font-size: 12px; opacity: 0.7; }
 
+    /* -- PIN Gate -- */
+    .pin-gate {
+      position: fixed; inset: 0; background: var(--bg); color: var(--text);
+      z-index: 1000; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px;
+      text-align: center;
+    }
+    .pin-gate.hidden { display: none; }
+    .pin-gate h2 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .pin-gate .pin-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+    .pin-gate input {
+      width: 180px; text-align: center; font-size: 24px; font-weight: 700;
+      letter-spacing: 8px; padding: 12px; border: 2px solid var(--border);
+      border-radius: 12px; background: var(--surface); color: var(--text);
+      font-family: inherit;
+    }
+    .pin-gate input:focus { border-color: var(--accent); outline: none; }
+    .pin-gate .pin-error { color: #ef4444; font-size: 12px; margin-top: 8px; min-height: 18px; }
+    .pin-gate button {
+      margin-top: 16px; padding: 12px 32px; border-radius: 12px; border: none;
+      background: var(--accent); color: white; font-size: 15px;
+      font-weight: 700; cursor: pointer;
+    }
+
     /* Ã¢ÂÂÃ¢ÂÂ Lead Scanner Ã¢ÂÂÃ¢ÂÂ */
     .leads-header { display: flex; gap: 8px; margin-bottom: 12px; }
     .leads-header .btn-scan {
@@ -819,6 +843,15 @@
     </div>
   </div>
 
+  <!-- PIN Gate -->
+  <div class="pin-gate hidden" id="pin-gate">
+    <h2 id="pin-event-name"></h2>
+    <div class="pin-sub">Enter team PIN to continue</div>
+    <input type="password" id="pin-input" maxlength="8" inputmode="numeric" autocomplete="off">
+    <div class="pin-error" id="pin-error"></div>
+    <button id="pin-submit">Unlock</button>
+  </div>
+
   <!-- Onboarding Overlay (first launch) -->
   <div class="onboarding-overlay hidden" id="onboarding">
     <h2 id="onb-event-name"></h2>
@@ -1091,7 +1124,9 @@ const CONFIG = {
       ],
       "notes": "Final day for booth demos and content capture - early close at 4:00 PM"
     }
-  ]
+  ],
+  "googleSheetUrl": "",
+  "teamPin": ""
 };
 
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
@@ -2085,36 +2120,20 @@ document.getElementById('cam-capture').addEventListener('click', async () => {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     const base64 = dataUrl.split(',')[1];
 
-    // Use API key from config (baked in by admin) or fall back to localStorage
-    const apiKey = CONFIG.anthropicApiKey || localStorage.getItem('admin_api_key') || '';
-    if (!apiKey) {
-      closeCamera();
-      alert('Badge scanning is not configured. Ask your admin to set up the Anthropic API key in the admin panel.');
-      return;
-    }
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    // Use server-side API proxy (API key stays in Vercel env var)
+    const resp = await fetch('/api/scan', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'x-team-pin': CONFIG.teamPin || ''
       },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 512,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-            { type: 'text', text: 'Extract contact info from this badge/business card photo. Return ONLY a JSON object with these fields (use empty string if not visible): {"firstName":"","lastName":"","title":"","company":"","linkedin":"","email":"","phone":"","notes":""}. Split the name into first and last. If you see a LinkedIn URL or QR code pointing to LinkedIn, include it. No markdown, no explanation.' }
-          ]
-        }]
-      })
+      body: JSON.stringify({ base64, mediaType: 'image/jpeg' })
     });
 
-    if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `API error: ${resp.status}`);
+    }
 
     const data = await resp.json();
     let text = data.content[0]?.text || '';
@@ -2198,6 +2217,49 @@ function parseVCard(text) {
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
    INIT Ã¢ÂÂ show onboarding if no profile, otherwise render normally
    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
+// PIN Gate
+function checkPinGate() {
+  const pin = CONFIG.teamPin || '';
+  // No PIN configured or already authenticated this session
+  if (!pin || sessionStorage.getItem('pin_ok') === '1') {
+    return initApp();
+  }
+  const gate = document.getElementById('pin-gate');
+  document.getElementById('pin-event-name').textContent = CONFIG.event.name;
+  gate.classList.remove('hidden');
+
+  const submit = () => {
+    const entered = document.getElementById('pin-input').value;
+    if (entered === pin) {
+      sessionStorage.setItem('pin_ok', '1');
+      gate.classList.add('hidden');
+      initApp();
+    } else {
+      document.getElementById('pin-error').textContent = 'Incorrect PIN';
+      document.getElementById('pin-input').value = '';
+      document.getElementById('pin-input').focus();
+    }
+  };
+  document.getElementById('pin-submit').addEventListener('click', submit);
+  document.getElementById('pin-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+  });
+}
+
+function initApp() {
+  if (!state.activeProfile || !getTeamMember(state.activeProfile)) {
+    showOnboarding();
+    state.activeProfile = CONFIG.team[0]?.id || '';
+    renderHeader();
+    renderSchedule();
+    renderPlayers();
+  } else {
+    renderHeader();
+    renderSchedule();
+    renderPlayers();
+  }
+}
+
 function showOnboarding() {
   const overlay = document.getElementById('onboarding');
   document.getElementById('onb-event-name').textContent = CONFIG.event.name;
@@ -2231,19 +2293,7 @@ function showOnboarding() {
   overlay.classList.remove('hidden');
 }
 
-if (!state.activeProfile || !getTeamMember(state.activeProfile)) {
-  // First launch Ã¢ÂÂ show onboarding
-  showOnboarding();
-  // Still render header with fallback
-  state.activeProfile = CONFIG.team[0]?.id || '';
-  renderHeader();
-  renderSchedule();
-  renderPlayers();
-} else {
-  renderHeader();
-  renderSchedule();
-  renderPlayers();
-}
+checkPinGate();
 
 /* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
    SERVICE WORKER Ã¢ÂÂ Register, detect updates, prompt user
