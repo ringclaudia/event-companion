@@ -673,7 +673,8 @@
     <div class="subtitle">Upload sources, AI organizes your event</div>
   </div>
   <div class="header-actions">
-    <a href="./index.html">View App</a>
+    <button onclick="resetAdmin()" style="background:none;border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;margin-right:8px;">Start Fresh</button>
+    <a href="/index.html">View App</a>
   </div>
 </div>
 
@@ -959,16 +960,105 @@ if (window.pdfjsLib) {
 const adminState = {
   apiKey: localStorage.getItem('admin_api_key') || '',
   apiKeyVerified: false,
-  sources: JSON.parse(localStorage.getItem('admin_sources') || '[]'),
-  config: JSON.parse(localStorage.getItem('admin_config') || 'null'),
+  sources: [],
+  config: null,
   currentStep: 1,
   activeTab: 'event'
 };
 
-let sourceIdCounter = adminState.sources.reduce((max, s) => Math.max(max, s.id || 0), 0);
+let sourceIdCounter = 0;
 
-function persistSources() { localStorage.setItem('admin_sources', JSON.stringify(adminState.sources)); }
-function persistConfig() { if (adminState.config) localStorage.setItem('admin_config', JSON.stringify(adminState.config)); }
+// IndexedDB for large data (photos push config well past localStorage's 5MB limit)
+const DB_NAME = 'admin_companion';
+const DB_VERSION = 1;
+let _db = null;
+
+function openDB() {
+  if (_db) return Promise.resolve(_db);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('state')) db.createObjectStore('state');
+    };
+    req.onsuccess = () => { _db = req.result; resolve(_db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGet(key) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction('state', 'readonly');
+    const req = tx.objectStore('state').get(key);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+function dbSet(key, value) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction('state', 'readwrite');
+    const req = tx.objectStore('state').put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+function persistSources() { dbSet('sources', adminState.sources).catch(e => console.warn('persistSources:', e)); }
+function persistConfig() { if (adminState.config) dbSet('config', adminState.config).catch(e => console.warn('persistConfig:', e)); }
+
+// Load saved state from IndexedDB, then init the UI
+async function loadSavedState() {
+  try {
+    const [savedConfig, savedSources] = await Promise.all([dbGet('config'), dbGet('sources')]);
+    if (savedConfig) adminState.config = savedConfig;
+    if (savedSources && savedSources.length > 0) {
+      adminState.sources = savedSources;
+      sourceIdCounter = savedSources.reduce((max, s) => Math.max(max, s.id || 0), 0);
+    }
+  } catch (e) {
+    console.warn('Could not load saved state:', e);
+  }
+
+  // Auto-resume
+  if (adminState.config && adminState.config.event) {
+    goToStep(4);
+    renderReview();
+  } else if (adminState.sources.length > 0) {
+    goToStep(2);
+    renderSources();
+  }
+}
+
+// Migrate any existing localStorage data to IndexedDB (one-time)
+async function migrateFromLocalStorage() {
+  try {
+    const oldConfig = localStorage.getItem('admin_config');
+    const oldSources = localStorage.getItem('admin_sources');
+    if (oldConfig) {
+      await dbSet('config', JSON.parse(oldConfig));
+      localStorage.removeItem('admin_config');
+    }
+    if (oldSources) {
+      await dbSet('sources', JSON.parse(oldSources));
+      localStorage.removeItem('admin_sources');
+    }
+  } catch (e) { /* ignore migration errors */ }
+}
+
+migrateFromLocalStorage().then(() => loadSavedState());
+
+window.resetAdmin = async function() {
+  if (!confirm('Clear all saved admin data (sources, config, photos)? This cannot be undone.')) return;
+  try {
+    const db = await openDB();
+    const tx = db.transaction('state', 'readwrite');
+    tx.objectStore('state').clear();
+    localStorage.removeItem('admin_api_key');
+    localStorage.removeItem('gsheet_url');
+  } catch (e) { /* ignore */ }
+  location.reload();
+};
 
 /* ═══════════════════════════════════════════════════════════════════
    STEP NAVIGATION
@@ -996,17 +1086,6 @@ document.querySelectorAll('.step').forEach(s => {
 document.querySelectorAll('[data-goto]').forEach(btn => {
   btn.addEventListener('click', () => goToStep(parseInt(btn.dataset.goto)));
 });
-
-// Auto-resume: if we have a saved config, jump straight to review
-if (adminState.config && adminState.config.event) {
-  goToStep(4);
-  setTimeout(() => renderReview(), 0);
-}
-// If we have saved sources but no config, jump to sources step
-else if (adminState.sources.length > 0) {
-  goToStep(2);
-  setTimeout(() => renderSources(), 0);
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    STEP 1: API KEY
@@ -1079,7 +1158,7 @@ document.getElementById('btn-load-existing').addEventListener('click', async () 
   btn.textContent = 'Loading...';
 
   try {
-    const resp = await fetch('./index.html');
+    const resp = await fetch('/index.html');
     if (!resp.ok) throw new Error('Could not load index.html');
     const html = await resp.text();
 
@@ -1783,6 +1862,7 @@ window.addScheduleItem = function() {
     date: lastDate, start: '09:00', end: '10:00', title: 'New Item', type: 'meeting',
     location: '', assignees: adminState.config.team.map(t => t.id), notes: ''
   });
+  persistConfig();
   renderReview();
   renderPreviewTab();
 };
@@ -1977,12 +2057,6 @@ If you cannot determine a URL, set photoUrl to "" and provide instructions.`
    EXPORT
    ═══════════════════════════════════════════════════════════════════ */
 
-// Restore Google Sheet URL from localStorage
-document.getElementById('gsheet-url').value = localStorage.getItem('gsheet_url') || '';
-document.getElementById('gsheet-url').addEventListener('input', (e) => {
-  localStorage.setItem('gsheet_url', e.target.value.trim());
-});
-
 // Inject credentials into config before any export action
 function prepareConfigForExport() {
   const gsheetUrl = document.getElementById('gsheet-url').value.trim();
@@ -2006,7 +2080,7 @@ document.getElementById('export-download-html').addEventListener('click', async 
   // Fetch the current index.html template
   let template;
   try {
-    const resp = await fetch('./index.html');
+    const resp = await fetch('/index.html');
     template = await resp.text();
   } catch {
     alert('Could not load index.html template. Make sure this admin page is served from the same directory.');
@@ -2084,7 +2158,7 @@ document.getElementById('btn-do-push').addEventListener('click', async () => {
       template = atob(fileData.content.replace(/\n/g, ''));
     } else {
       // File doesn't exist, fetch local template
-      const localResp = await fetch('./index.html');
+      const localResp = await fetch('/index.html');
       template = await localResp.text();
     }
 
