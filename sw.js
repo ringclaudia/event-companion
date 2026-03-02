@@ -1,21 +1,18 @@
 /*
  * Service Worker — Event Companion PWA
  *
- * Strategy: Cache-first with background revalidation.
- *   1. First visit → fetch from network, populate cache, serve.
- *   2. Repeat visits → serve instantly from cache.
- *   3. Background fetch updates the cache silently.
- *   4. When sw.js itself changes (CACHE_VERSION bump), a new SW installs,
- *      re-caches everything, activates, and notifies the page so it can
- *      show an "Update available" banner.
+ * Strategies:
+ *   - index.html / navigation: Network-first (so CONFIG changes from admin
+ *     panel are picked up immediately; falls back to cache when offline).
+ *   - Other assets (manifest, icons): Stale-while-revalidate (fast offline,
+ *     updated in background).
  *
  * To deploy an update: bump CACHE_VERSION below and redeploy.
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `event-companion-${CACHE_VERSION}`;
 
-// Assets to precache on install — add any future static files here
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -28,7 +25,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(PRECACHE_ASSETS))
-      .then(() => self.skipWaiting()) // activate immediately
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -41,33 +38,44 @@ self.addEventListener('activate', event => {
           .filter(key => key.startsWith('event-companion-') && key !== CACHE_NAME)
           .map(key => caches.delete(key))
       ))
-      .then(() => self.clients.claim()) // take over open tabs
+      .then(() => self.clients.claim())
   );
 });
 
-/* ── Fetch: stale-while-revalidate ── */
+/* ── Fetch ── */
 self.addEventListener('fetch', event => {
   const request = event.request;
-
-  // Only handle GET requests and same-origin
   if (request.method !== 'GET') return;
 
+  const url = new URL(request.url);
+
+  // Network-first for HTML pages (contains CONFIG that changes via admin)
+  if (request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/') {
+    event.respondWith(
+      fetch(request)
+        .then(networkResponse => {
+          if (networkResponse && networkResponse.ok) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(request)) // offline fallback
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for everything else
   event.respondWith(
     caches.match(request).then(cachedResponse => {
-      // Fire off a background fetch to update the cache
       const fetchPromise = fetch(request).then(networkResponse => {
-        // Only cache successful responses
         if (networkResponse && networkResponse.ok) {
           const clone = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         }
         return networkResponse;
-      }).catch(() => {
-        // Network failed — cachedResponse (if any) is already being returned
-        return cachedResponse;
-      });
+      }).catch(() => cachedResponse);
 
-      // Return cached immediately, or wait for network if nothing cached
       return cachedResponse || fetchPromise;
     })
   );
