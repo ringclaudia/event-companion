@@ -10,7 +10,7 @@
  * To deploy an update: bump CACHE_VERSION below and redeploy.
  */
 
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = `event-companion-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [

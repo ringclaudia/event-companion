@@ -2087,30 +2087,25 @@ function saveLeads(leads) {
   saveLocalLeads(leads);
 }
 
-// Push a single lead to Google Sheet (fire-and-forget)
+// Push a single lead to Google Sheet via Vercel proxy
 function pushLeadToSheet(lead) {
-  const url = CONFIG.googleSheetUrl;
-  if (!url) return;
-  const payload = JSON.stringify(lead);
+  const sheetUrl = CONFIG.googleSheetUrl;
+  if (!sheetUrl) return;
 
-  // Try sendBeacon first (most reliable for fire-and-forget to Apps Script)
-  if (navigator.sendBeacon) {
-    const sent = navigator.sendBeacon(url, new Blob([payload], { type: 'text/plain;charset=utf-8' }));
-    if (sent) {
-      markLeadSynced(lead.id);
-      return;
-    }
-  }
-
-  // Fallback: fetch with no-cors
-  fetch(url, {
+  fetch('/api/sheet', {
     method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: payload,
-    redirect: 'follow'
-  }).then(() => {
-    markLeadSynced(lead.id);
+    headers: {
+      'Content-Type': 'application/json',
+      'x-team-pin': CONFIG.teamPin || '',
+      'x-sheet-url': sheetUrl
+    },
+    body: JSON.stringify(lead)
+  }).then(resp => {
+    if (resp.ok) {
+      markLeadSynced(lead.id);
+    } else {
+      console.warn('Lead push failed:', resp.status);
+    }
   }).catch(err => {
     console.warn('Lead push failed (will retry on next sync):', err.message || err);
   });
@@ -2125,17 +2120,23 @@ function markLeadSynced(leadId) {
 // Pull all leads from Google Sheet and merge with local
 let _syncInProgress = false;
 async function syncLeadsFromSheet() {
-  const url = CONFIG.googleSheetUrl;
-  if (!url || _syncInProgress) return;
+  const sheetUrl = CONFIG.googleSheetUrl;
+  if (!sheetUrl || _syncInProgress) return;
   _syncInProgress = true;
   try {
-    const resp = await fetch(url);
+    const resp = await fetch('/api/sheet', {
+      headers: {
+        'x-team-pin': CONFIG.teamPin || '',
+        'x-sheet-url': sheetUrl
+      }
+    });
     if (!resp.ok) return;
     const remote = await resp.json();
     if (!Array.isArray(remote)) return;
 
     const local = getLocalLeads();
     const localIds = new Set(local.map(l => l.id));
+    const remoteIds = new Set(remote.filter(r => r.id).map(r => r.id));
     const deletedIds = new Set(JSON.parse(localStorage.getItem('event_leads_deleted') || '[]'));
 
     // Add any remote leads we don't have locally (skip deleted ones)
@@ -2148,20 +2149,31 @@ async function syncLeadsFromSheet() {
       }
     }
 
-    // Push any unsynced local leads to Sheet
+    // Mark local leads as synced if they appear in the remote sheet
+    for (const lead of local) {
+      if (!lead._synced && remoteIds.has(lead.id)) {
+        lead._synced = true;
+      }
+    }
+
+    // Retry pushing any still-unsynced local leads
     const unsynced = local.filter(l => !l._synced);
     for (const lead of unsynced) {
       pushLeadToSheet(lead);
-      lead._synced = true;
     }
 
     if (added > 0 || unsynced.length > 0) {
       saveLocalLeads(local);
       if (added > 0) renderLeads();
     }
-  } catch { /* offline */ }
+  } catch(e) { console.warn('Sheet sync failed:', e.message || e); }
   finally { _syncInProgress = false; }
 }
+
+// Retry unsynced leads every 60s while online
+setInterval(() => {
+  if (navigator.onLine && CONFIG.googleSheetUrl) syncLeadsFromSheet();
+}, 60000);
 
 function renderLeads() {
   // Kick off a background sync from Google Sheet
