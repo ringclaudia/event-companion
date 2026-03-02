@@ -1568,9 +1568,14 @@ function showPlayerModal(idx) {
     </div>
     ${p.notes ? `<div class="modal-notes">${p.notes}</div>` : ''}
     ${schedHTML}
-    <button class="modal-close" onclick="document.getElementById('player-modal').classList.remove('open')">Close</button>
+    <button class="modal-close" onclick="history.back()">Close</button>
   `;
   document.getElementById('player-modal').classList.add('open');
+  history.pushState({ modal: 'player' }, '', '');
+}
+
+function closePlayerModal() {
+  document.getElementById('player-modal').classList.remove('open');
 }
 
 // Event QR
@@ -1836,7 +1841,7 @@ function afterProfileSave() {
 }
 
 /* == EVENT HANDLERS == */
-function switchView(view) {
+function switchView(view, fromPopstate) {
   state.currentView = view;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
@@ -1847,6 +1852,10 @@ function switchView(view) {
   if (view === 'eventqr') renderEventQR();
   if (view === 'card') renderCard();
   if (view === 'leads') renderLeads();
+
+  if (!fromPopstate) {
+    history.pushState({ view: view }, '', '');
+  }
 }
 
 document.getElementById('bottom-nav').addEventListener('click', (e) => {
@@ -1930,10 +1939,10 @@ document.getElementById('players-grid').addEventListener('click', (e) => {
   if (card) showPlayerModal(parseInt(card.dataset.playerIdx));
 });
 
-// Close modals on overlay click
+// Close modals on overlay click (use history.back so popstate handler does cleanup)
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.classList.remove('open');
+    if (e.target === overlay) history.back();
   });
 });
 
@@ -1941,6 +1950,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 document.getElementById('profile-btn').addEventListener('click', () => {
   renderProfileList();
   document.getElementById('profile-modal').classList.add('open');
+  history.pushState({ modal: 'profile' }, '', '');
 });
 
 // Profile selection
@@ -1962,13 +1972,13 @@ document.getElementById('profile-list').addEventListener('click', (e) => {
 document.getElementById('btn-open-edit-profile').addEventListener('click', () => {
   document.getElementById('profile-list-view').style.display = 'none';
   document.getElementById('profile-edit-view').style.display = '';
+  history.pushState({ modal: 'profile-edit' }, '', '');
   renderProfileEditForm();
 });
 
 // Back button from edit view to list view
 document.getElementById('pef-back').addEventListener('click', () => {
-  document.getElementById('profile-list-view').style.display = '';
-  document.getElementById('profile-edit-view').style.display = 'none';
+  history.back();
 });
 
 // (Card person pills removed \u2014 My Card shows logged-in user only)
@@ -2129,11 +2139,12 @@ window.deleteLead = function(idx) {
 const leadForm = document.getElementById('lead-form');
 document.getElementById('btn-add-lead-manual').addEventListener('click', () => {
   clearLeadForm();
-  leadForm.classList.add('open');
+  leadForm.classList.add('open'); history.pushState({ modal: 'leadform' }, '', '');
+  history.pushState({ modal: 'leadform' }, '', '');
 });
 
 document.getElementById('lf-cancel').addEventListener('click', () => {
-  leadForm.classList.remove('open');
+  history.back();
 });
 
 document.getElementById('lf-save').addEventListener('click', () => {
@@ -2198,6 +2209,7 @@ async function openCamera(mode) {
     });
     video.srcObject = cameraStream;
     overlay.classList.add('open');
+    history.pushState({ modal: 'camera' }, '', '');
   } catch (e) {
     alert('Could not access camera: ' + e.message);
   }
@@ -2213,7 +2225,7 @@ function closeCamera() {
   }
 }
 
-document.getElementById('cam-close').addEventListener('click', closeCamera);
+document.getElementById('cam-close').addEventListener('click', () => history.back());
 
 document.getElementById('btn-scan-badge').addEventListener('click', () => openCamera('badge'));
 document.getElementById('btn-scan-qr').addEventListener('click', () => openCamera('qr'));
@@ -2238,12 +2250,12 @@ document.getElementById('cam-capture').addEventListener('click', async () => {
         const data = parseVCard(qrResult);
         clearLeadForm();
         populateLeadForm(data);
-        leadForm.classList.add('open');
+        leadForm.classList.add('open'); history.pushState({ modal: 'leadform' }, '', '');
       } else {
         // Likely a URL or plain text
         clearLeadForm();
         populateLeadForm({ notes: qrResult });
-        leadForm.classList.add('open');
+        leadForm.classList.add('open'); history.pushState({ modal: 'leadform' }, '', '');
       }
       return;
     }
@@ -2281,7 +2293,7 @@ document.getElementById('cam-capture').addEventListener('click', async () => {
     closeCamera();
     clearLeadForm();
     populateLeadForm(parsed);
-    leadForm.classList.add('open');
+    leadForm.classList.add('open'); history.pushState({ modal: 'leadform' }, '', '');
 
   } catch (e) {
     closeCamera();
@@ -2433,6 +2445,69 @@ function showOnboarding() {
 }
 
 checkPinGate();
+
+/* == BACK BUTTON / HISTORY MANAGEMENT ==
+ * Push state when navigating views or opening modals so the hardware/browser
+ * back button closes overlays and navigates within the app instead of leaving.
+ * A beforeunload guard catches the final "leave the page" if nothing else can
+ * handle popstate (e.g. user is on the home view with nothing to close).
+ */
+
+// Seed initial history entry so the first back press hits popstate
+history.replaceState({ view: 'schedule' }, '', '');
+
+window.addEventListener('popstate', (e) => {
+  // 1. Close camera overlay if open
+  const cam = document.getElementById('camera-overlay');
+  if (cam.classList.contains('open')) {
+    closeCamera();
+    return;
+  }
+
+  // 2. Close lead form if open
+  const lf = document.getElementById('lead-form');
+  if (lf.classList.contains('open')) {
+    lf.classList.remove('open');
+    return;
+  }
+
+  // 3. Close player modal if open
+  const pm = document.getElementById('player-modal');
+  if (pm.classList.contains('open')) {
+    pm.classList.remove('open');
+    return;
+  }
+
+  // 4. Close profile modal (edit view → list, or list → close)
+  const profModal = document.getElementById('profile-modal');
+  if (profModal.classList.contains('open')) {
+    const editView = document.getElementById('profile-edit-view');
+    if (editView.style.display !== 'none') {
+      document.getElementById('profile-list-view').style.display = '';
+      editView.style.display = 'none';
+    } else {
+      profModal.classList.remove('open');
+    }
+    return;
+  }
+
+  // 5. Navigate back to the previous view, or stay on schedule (home)
+  if (e.state && e.state.view) {
+    switchView(e.state.view, true);
+  } else if (state.currentView !== 'schedule') {
+    switchView('schedule', true);
+  } else {
+    // Already on home with nothing to close — push a guard state
+    // so the next back press doesn't immediately leave
+    history.pushState({ view: 'schedule' }, '', '');
+  }
+});
+
+// beforeunload: last resort if user truly tries to leave
+window.addEventListener('beforeunload', (e) => {
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 /* == SERVICE WORKER \u2014 Register, detect updates, prompt user == */
 if ('serviceWorker' in navigator) {
