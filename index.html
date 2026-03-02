@@ -1185,6 +1185,22 @@ const CONFIG = {
   "teamPin": "4321"
 };
 
+/* == NORMALIZE: ensure schedule assignees use current team IDs ==
+ * The admin panel assigns all team members to every schedule item.
+ * If team IDs are later changed, the schedule would have stale IDs.
+ * Fix at load time: replace any unrecognized assignee IDs with the
+ * full current team, preserving items that already have valid IDs.
+ */
+(function normalizeAssignees() {
+  const teamIds = CONFIG.team.map(t => t.id);
+  const teamIdSet = new Set(teamIds);
+  CONFIG.schedule.forEach(s => {
+    const valid = s.assignees.filter(id => teamIdSet.has(id));
+    // If none of the assignees match current team, assign everyone
+    s.assignees = valid.length > 0 ? valid : [...teamIds];
+  });
+})();
+
 /* == APPLICATION STATE == */
 const state = {
   currentView: 'schedule',
