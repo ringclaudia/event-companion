@@ -1431,8 +1431,8 @@ You must return ONLY valid JSON matching this exact schema (no markdown, no expl
 
 Rules:
 - Extract ALL data you can find, even partial info. Make reasonable inferences.
-- Team member IDs should be lowercase first initial + last name (e.g., "schen" for Sarah Chen).
-- Schedule assignees reference team member IDs. If you can't determine who, use all team members.
+- Team member IDs should be lowercase first names (e.g., "sarah" for Sarah Chen, "zohaib" for Zohaib Ahmed).
+- CRITICAL: Schedule assignees MUST use the EXACT same IDs as the team[].id values. If unsure who is assigned, include ALL team member IDs.
 - Times must be 24-hour "HH:MM" format. Dates must be "YYYY-MM-DD".
 - Prioritize key players by relevance: decision-makers and active deals = high, warm leads = medium, others = low.
 - For fields you truly cannot determine, use sensible placeholders like "TBD" or empty strings.
@@ -1490,6 +1490,28 @@ Rules:
     config.company = config.company || { name: 'TBD', website: '' };
     // Ensure twitter/whatsapp fields exist on team members
     config.team.forEach(t => { t.twitter = t.twitter || ''; t.whatsapp = t.whatsapp || ''; });
+
+    // Fix schedule assignees: AI sometimes generates IDs that don't match team[].id
+    const teamIds = config.team.map(t => t.id);
+    const teamNames = config.team.map(t => t.name.toLowerCase());
+    config.schedule.forEach(s => {
+      s.assignees = (s.assignees || []).map(aid => {
+        if (teamIds.includes(aid)) return aid; // already correct
+        // Try to fuzzy-match: check if any team member's name contains this ID
+        const match = config.team.find(t =>
+          t.name.toLowerCase().includes(aid) ||
+          t.id.includes(aid) ||
+          aid.includes(t.id) ||
+          t.name.toLowerCase().split(' ').some(w => w.startsWith(aid) || aid.startsWith(w))
+        );
+        if (match) return match.id;
+        return aid; // keep as-is if no match found
+      });
+      // If no valid assignees, assign everyone
+      if (!s.assignees.some(a => teamIds.includes(a))) {
+        s.assignees = [...teamIds];
+      }
+    });
 
     adminState.config = config;
     persistConfig();
@@ -2155,7 +2177,9 @@ document.getElementById('btn-do-push').addEventListener('click', async () => {
     if (getResp.ok) {
       const fileData = await getResp.json();
       sha = fileData.sha;
-      template = atob(fileData.content.replace(/\n/g, ''));
+      // Proper UTF-8 decode (atob only handles Latin-1, corrupting non-ASCII chars)
+      const bytes = Uint8Array.from(atob(fileData.content.replace(/\n/g, '')), c => c.charCodeAt(0));
+      template = new TextDecoder().decode(bytes);
     } else {
       // File doesn't exist, fetch local template
       const localResp = await fetch('/index.html');
