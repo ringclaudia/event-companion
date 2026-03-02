@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#4f46e5">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
   <title>Event Companion</title>
   <style>
     :root {
@@ -33,6 +33,10 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    html, body {
+      overscroll-behavior: none;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
@@ -50,13 +54,15 @@
 
     /* == Header == */
     header {
-      height: var(--header-height);
+      height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+      padding-top: env(safe-area-inset-top, 0px);
       background: var(--accent);
       color: white;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
       flex-shrink: 0;
       z-index: 100;
     }
@@ -89,14 +95,14 @@
 
     /* == Bottom Nav == */
     nav {
-      height: var(--nav-height);
+      height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
       background: var(--surface);
       border-top: 1px solid var(--border);
       display: flex;
       align-items: stretch;
       flex-shrink: 0;
       z-index: 100;
-      padding-bottom: env(safe-area-inset-bottom, 0);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     nav button {
       flex: 1; border: none; background: none; cursor: pointer;
@@ -456,7 +462,8 @@
     .onboarding-overlay {
       position: fixed; inset: 0; background: var(--accent); color: white;
       z-index: 999; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 24px;
+      align-items: center; justify-content: center;
+      padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
       text-align: center;
     }
     .onboarding-overlay.hidden { display: none; }
@@ -485,7 +492,8 @@
     .pin-gate {
       position: fixed; inset: 0; background: var(--bg); color: var(--text);
       z-index: 1000; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 24px;
+      align-items: center; justify-content: center;
+      padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
       text-align: center;
     }
     .pin-gate.hidden { display: none; }
