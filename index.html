@@ -1825,21 +1825,31 @@ function saveLeads(leads) {
 function pushLeadToSheet(lead) {
   const url = CONFIG.googleSheetUrl;
   if (!url) return;
+  // Google Apps Script redirects POST responses (302), causing CORS failures
+  // in default mode. Use no-cors so the POST body reaches the server even
+  // though the response is opaque (fine for fire-and-forget).
   fetch(url, {
     method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(lead)
   }).then(() => {
-    // Mark as synced
+    // With no-cors the response is opaque, but the POST was sent.
+    // Optimistically mark as synced.
     const leads = getLocalLeads();
     const match = leads.find(l => l.id === lead.id);
     if (match) { match._synced = true; saveLocalLeads(leads); }
-  }).catch(() => { /* offline \u2014 will sync later */ });
+  }).catch(err => {
+    console.warn('Lead push failed (will retry on next sync):', err.message || err);
+  });
 }
 
 // Pull all leads from Google Sheet and merge with local
+let _syncInProgress = false;
 async function syncLeadsFromSheet() {
   const url = CONFIG.googleSheetUrl;
-  if (!url) return;
+  if (!url || _syncInProgress) return;
+  _syncInProgress = true;
   try {
     const resp = await fetch(url);
     if (!resp.ok) return;
@@ -1860,24 +1870,26 @@ async function syncLeadsFromSheet() {
       }
     }
 
-    // Push any unsynced local leads to Sheet
+    // Push any unsynced local leads to Sheet (one at a time)
     const unsynced = local.filter(l => !l._synced);
-    if (unsynced.length > 0) {
-      fetch(url, {
-        method: 'POST',
-        body: JSON.stringify(unsynced)
-      }).then(() => {
-        const leads = getLocalLeads();
-        leads.forEach(l => l._synced = true);
-        saveLocalLeads(leads);
-      }).catch(() => {});
+    for (const lead of unsynced) {
+      try {
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(lead)
+        });
+        lead._synced = true;
+      } catch { /* will retry next sync */ }
     }
 
-    if (added > 0) {
+    if (added > 0 || unsynced.length > 0) {
       saveLocalLeads(local);
-      renderLeads();
+      if (added > 0) renderLeads();
     }
   } catch { /* offline */ }
+  finally { _syncInProgress = false; }
 }
 
 function renderLeads() {
