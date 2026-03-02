@@ -1432,7 +1432,7 @@ You must return ONLY valid JSON matching this exact schema (no markdown, no expl
 Rules:
 - Extract ALL data you can find, even partial info. Make reasonable inferences.
 - Team member IDs should be lowercase first names (e.g., "sarah" for Sarah Chen, "zohaib" for Zohaib Ahmed).
-- CRITICAL: Schedule assignees MUST use the EXACT same IDs as the team[].id values. If unsure who is assigned, include ALL team member IDs.
+- Schedule assignees: include ALL team member IDs for every event (everyone should see everything). The app handles per-person filtering at display time.
 - Times must be 24-hour "HH:MM" format. Dates must be "YYYY-MM-DD".
 - Prioritize key players by relevance: decision-makers and active deals = high, warm leads = medium, others = low.
 - For fields you truly cannot determine, use sensible placeholders like "TBD" or empty strings.
@@ -1491,26 +1491,10 @@ Rules:
     // Ensure twitter/whatsapp fields exist on team members
     config.team.forEach(t => { t.twitter = t.twitter || ''; t.whatsapp = t.whatsapp || ''; });
 
-    // Fix schedule assignees: AI sometimes generates IDs that don't match team[].id
+    // Auto-assign all team members to every schedule item so nobody misses anything
     const teamIds = config.team.map(t => t.id);
-    const teamNames = config.team.map(t => t.name.toLowerCase());
     config.schedule.forEach(s => {
-      s.assignees = (s.assignees || []).map(aid => {
-        if (teamIds.includes(aid)) return aid; // already correct
-        // Try to fuzzy-match: check if any team member's name contains this ID
-        const match = config.team.find(t =>
-          t.name.toLowerCase().includes(aid) ||
-          t.id.includes(aid) ||
-          aid.includes(t.id) ||
-          t.name.toLowerCase().split(' ').some(w => w.startsWith(aid) || aid.startsWith(w))
-        );
-        if (match) return match.id;
-        return aid; // keep as-is if no match found
-      });
-      // If no valid assignees, assign everyone
-      if (!s.assignees.some(a => teamIds.includes(a))) {
-        s.assignees = [...teamIds];
-      }
+      s.assignees = [...teamIds];
     });
 
     adminState.config = config;
