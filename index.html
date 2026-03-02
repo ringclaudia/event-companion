@@ -60,8 +60,8 @@
       flex-shrink: 0;
       z-index: 100;
     }
-    header .event-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 80px); }
-    header .event-meta { font-size: 11px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 80px); }
+    header .event-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 100px); }
+    header .event-meta { font-size: 11px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 100px); }
     header .header-left { display: flex; flex-direction: column; min-width: 0; }
     header .profile-btn {
       width: 34px; height: 34px; border-radius: 50%;
@@ -605,7 +605,7 @@
     .profile-list .mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .profile-list .profile-name { font-size: 14px; font-weight: 600; }
     .profile-list .profile-title { font-size: 11px; color: var(--text-secondary); }
-    .profile-list li.selected { background: var(--accent-light); margin: 0 -20px; padding: 12px 20px; }
+    .profile-list li.selected { background: var(--accent-light); border-radius: 8px; }
 
     /* Utility */
     .section-header {
@@ -1138,7 +1138,7 @@ const state = {
   currentView: 'schedule',
   selectedDay: null,
   typeFilter: 'all',
-  personFilter: 'all',
+  personFilter: localStorage.getItem('personFilter') || 'all',
   activeProfile: localStorage.getItem('activeProfile') || ''
 };
 
@@ -1914,6 +1914,7 @@ document.getElementById('filters').addEventListener('click', (e) => {
   }
   if (chip.dataset.person !== undefined) {
     state.personFilter = chip.dataset.person;
+    localStorage.setItem('personFilter', chip.dataset.person);
   }
   renderSchedule();
 });
@@ -1949,6 +1950,7 @@ document.getElementById('profile-list').addEventListener('click', (e) => {
     state.activeProfile = li.dataset.profile;
     state.personFilter = li.dataset.profile;
     localStorage.setItem('activeProfile', li.dataset.profile);
+    localStorage.setItem('personFilter', li.dataset.profile);
     document.getElementById('profile-modal').classList.remove('open');
     renderHeader();
     if (state.currentView === 'schedule') renderSchedule();
@@ -2382,12 +2384,14 @@ function checkPinGate() {
 
 function initApp() {
   if (!state.activeProfile || !getTeamMember(state.activeProfile)) {
+    // Don't render behind the overlay — wait for user to pick a profile
     showOnboarding();
-    state.activeProfile = CONFIG.team[0]?.id || '';
-    renderHeader();
-    renderSchedule();
-    renderPlayers();
   } else {
+    // personFilter should default to the active profile if not already set
+    if (state.personFilter === 'all' && state.activeProfile) {
+      state.personFilter = state.activeProfile;
+      localStorage.setItem('personFilter', state.activeProfile);
+    }
     renderHeader();
     renderSchedule();
     renderPlayers();
@@ -2418,6 +2422,7 @@ function showOnboarding() {
     state.activeProfile = li.dataset.onbProfile;
     state.personFilter = li.dataset.onbProfile;
     localStorage.setItem('activeProfile', li.dataset.onbProfile);
+    localStorage.setItem('personFilter', li.dataset.onbProfile);
     overlay.classList.add('hidden');
     renderHeader();
     renderSchedule();
