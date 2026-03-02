@@ -701,6 +701,8 @@
     .connectivity-toast.show { transform: translateX(-50%) translateY(0); }
     .connectivity-toast.offline { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
     .connectivity-toast.online { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .connectivity-toast.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .connectivity-toast.success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
 
     /* == Install banner == */
     .install-banner {
@@ -2062,6 +2064,15 @@ document.getElementById('pef-back').addEventListener('click', () => {
 // (Card person pills removed \u2014 My Card shows logged-in user only)
 
 /* == LEADS \u2014 scan, capture, manual entry, local storage == */
+// -- Toast helper --
+function showToast(msg, type = 'error', duration = 4000) {
+  const t = document.getElementById('connectivity-toast');
+  t.textContent = msg;
+  t.className = 'connectivity-toast show ' + type;
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+}
+
 // -- Lead Storage: localStorage + Google Sheets sync --
 
 function getLocalLeads() {
@@ -2100,14 +2111,17 @@ function pushLeadToSheet(lead) {
       'x-sheet-url': sheetUrl
     },
     body: JSON.stringify(lead)
-  }).then(resp => {
+  }).then(async resp => {
     if (resp.ok) {
       markLeadSynced(lead.id);
     } else {
-      console.warn('Lead push failed:', resp.status);
+      const body = await resp.json().catch(() => ({}));
+      console.warn('Sheet push failed:', resp.status, body);
+      showToast('Sheet sync failed: ' + (body.error || resp.status), 'error');
     }
   }).catch(err => {
-    console.warn('Lead push failed (will retry on next sync):', err.message || err);
+    console.warn('Sheet push failed:', err.message || err);
+    showToast('Sheet sync failed: ' + (err.message || 'network error'), 'error');
   });
 }
 
@@ -2166,7 +2180,10 @@ async function syncLeadsFromSheet() {
       saveLocalLeads(local);
       if (added > 0) renderLeads();
     }
-  } catch(e) { console.warn('Sheet sync failed:', e.message || e); }
+  } catch(e) {
+    console.warn('Sheet sync failed:', e.message || e);
+    if (navigator.onLine) showToast('Sheet sync failed: ' + (e.message || 'unknown'), 'error');
+  }
   finally { _syncInProgress = false; }
 }
 

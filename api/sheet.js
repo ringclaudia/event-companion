@@ -20,25 +20,41 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       // Push a single lead to the Google Sheet
       const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+
+      // Use redirect:'manual' — GAS returns 302 after processing the POST.
+      // Following the redirect would change the method to GET (per HTTP spec),
+      // but we don't need the response content, just confirmation it was accepted.
       const resp = await fetch(sheetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body,
-        redirect: 'follow'
+        redirect: 'manual'
       });
-      // Google Apps Script returns HTML after redirect; just check status
-      if (resp.status >= 400) {
-        const text = await resp.text();
-        return res.status(502).json({ error: 'Sheet error', status: resp.status, detail: text });
+
+      // 302/303 = GAS accepted & processed the request, redirecting to response page
+      // 200 = direct success (some GAS deployments)
+      if (resp.status === 302 || resp.status === 303 || resp.status === 200) {
+        return res.status(200).json({ ok: true });
       }
-      return res.status(200).json({ ok: true });
+
+      // Anything else is an error
+      const text = await resp.text().catch(() => '');
+      return res.status(502).json({
+        error: 'Sheet error',
+        status: resp.status,
+        detail: text.slice(0, 500)
+      });
     }
 
     if (req.method === 'GET') {
       // Pull all leads from the Google Sheet
       const resp = await fetch(sheetUrl, { redirect: 'follow' });
       if (!resp.ok) {
-        return res.status(502).json({ error: 'Sheet returned ' + resp.status });
+        const text = await resp.text().catch(() => '');
+        return res.status(502).json({
+          error: 'Sheet returned ' + resp.status,
+          detail: text.slice(0, 500)
+        });
       }
       const text = await resp.text();
       // Apps Script may return JSON or HTML-wrapped JSON; try to parse
@@ -46,8 +62,10 @@ export default async function handler(req, res) {
         const data = JSON.parse(text);
         return res.status(200).json(data);
       } catch {
-        // If the response isn't valid JSON, return it as-is for debugging
-        return res.status(502).json({ error: 'Invalid JSON from sheet', body: text.slice(0, 500) });
+        return res.status(502).json({
+          error: 'Invalid JSON from sheet',
+          body: text.slice(0, 500)
+        });
       }
     }
 
