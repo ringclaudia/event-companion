@@ -405,13 +405,16 @@
     .social-qr-section p { font-size: 11px; color: var(--text-secondary); margin-bottom: 14px; }
     .social-qr-section canvas { display: inline-block; }
 
-    /* == Profile Edit Form == */
-    .profile-edit-form {
-      display: none; background: var(--surface); border-radius: var(--radius);
-      padding: 20px; margin-top: 12px; box-shadow: var(--shadow);
+    /* == Profile Edit Form (in modal) == */
+    .profile-edit-link {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 14px 0; margin-top: 8px; border: none; background: none;
+      font-size: 14px; font-weight: 600; color: var(--accent);
+      cursor: pointer; border-top: 1px solid var(--border);
     }
-    .profile-edit-form.open { display: block; }
-    .profile-edit-form h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .profile-edit-link:active { opacity: 0.7; }
+    .pef-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .pef-back-btn { background: none; border: none; cursor: pointer; color: var(--accent); padding: 4px; display: flex; }
     .pef-field { margin-bottom: 12px; }
     .pef-field label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px; }
     .pef-field input[type="text"],
@@ -433,7 +436,7 @@
     .pef-btn-reset { background: none; color: var(--text-secondary); font-size: 12px; padding: 10px 12px; text-decoration: underline; }
 
     /* == Profile Modal == */
-    .profile-modal .modal-sheet { max-height: 50vh; }
+    .profile-modal .modal-sheet { max-height: 80vh; overflow-y: auto; }
     .profile-list { list-style: none; }
     .profile-list li {
       padding: 12px 0; border-bottom: 1px solid var(--border);
@@ -836,8 +839,25 @@
   <div class="modal-overlay profile-modal" id="profile-modal">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <h3 style="font-size:16px;margin-bottom:16px;">Switch Profile</h3>
-      <ul class="profile-list" id="profile-list"></ul>
+      <!-- Profile list view -->
+      <div id="profile-list-view">
+        <h3 style="font-size:16px;margin-bottom:16px;">Switch Profile</h3>
+        <ul class="profile-list" id="profile-list"></ul>
+        <button class="profile-edit-link" id="btn-open-edit-profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit My Profile
+        </button>
+      </div>
+      <!-- Profile edit view (toggled) -->
+      <div id="profile-edit-view" style="display:none;">
+        <div class="pef-header">
+          <button id="pef-back" class="pef-back-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <h3 style="font-size:16px;">Edit My Profile</h3>
+        </div>
+        <div id="profile-edit-form-content"></div>
+      </div>
     </div>
   </div>
 
@@ -1621,38 +1641,13 @@ function renderCard() {
     </div>
   `;
 
-  // Action buttons
+  // Action button
   html += `
     <div class="card-actions">
       <button class="card-action-btn" id="btn-share-card">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         <span>Share Card</span>
       </button>
-      <button class="card-action-btn" id="btn-edit-profile">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        <span>Edit Profile</span>
-      </button>
-    </div>
-  `;
-
-  // Inline edit form (hidden by default)
-  html += `
-    <div class="profile-edit-form" id="profile-edit-form">
-      <h3>Edit Your Profile</h3>
-      <div class="pef-field"><label>Name</label><input type="text" id="pef-name" value="${(member.name || '').replace(/"/g, '&quot;')}"></div>
-      <div class="pef-field"><label>Title</label><input type="text" id="pef-title" value="${(member.title || '').replace(/"/g, '&quot;')}"></div>
-      <div class="pef-field"><label>Email</label><input type="email" id="pef-email" value="${(member.email || '').replace(/"/g, '&quot;')}"></div>
-      <div class="pef-field"><label>Phone</label><input type="tel" id="pef-phone" value="${(member.phone || '').replace(/"/g, '&quot;')}"></div>
-      <div class="pef-field"><label>LinkedIn URL</label><input type="url" id="pef-linkedin" value="${(member.linkedin || '').replace(/"/g, '&quot;')}"></div>
-      <div class="pef-field"><label>X / Twitter</label><input type="url" id="pef-twitter" value="${(member.twitter || '').replace(/"/g, '&quot;')}"></div>
-      <div class="pef-field"><label>WhatsApp</label><input type="tel" id="pef-whatsapp" value="${(member.whatsapp || '').replace(/"/g, '&quot;')}" placeholder="+1234567890"></div>
-      <div class="pef-field"><label>Profile Photo</label><input type="file" id="pef-photo" accept="image/*"></div>
-      ${member.photo ? '<div class="pef-field"><label></label><button class="btn-remove-photo" id="pef-remove-photo">Remove Photo</button></div>' : ''}
-      <div class="pef-actions">
-        <button class="pef-btn pef-btn-save" id="pef-save">Save Changes</button>
-        <button class="pef-btn pef-btn-cancel" id="pef-cancel">Cancel</button>
-        ${getProfileOverrides(member.id) ? '<button class="pef-btn pef-btn-reset" id="pef-reset">Reset to Default</button>' : ''}
-      </div>
     </div>
   `;
 
@@ -1736,76 +1731,6 @@ function renderCard() {
     }
   });
 
-  // Edit profile toggle
-  const editForm = document.getElementById('profile-edit-form');
-  document.getElementById('btn-edit-profile').addEventListener('click', () => {
-    editForm.classList.toggle('open');
-    editForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
-
-  document.getElementById('pef-cancel').addEventListener('click', () => {
-    editForm.classList.remove('open');
-  });
-
-  // Save profile edits
-  document.getElementById('pef-save').addEventListener('click', () => {
-    const updated = {
-      name: document.getElementById('pef-name').value.trim(),
-      title: document.getElementById('pef-title').value.trim(),
-      email: document.getElementById('pef-email').value.trim(),
-      phone: document.getElementById('pef-phone').value.trim(),
-      linkedin: document.getElementById('pef-linkedin').value.trim(),
-      twitter: document.getElementById('pef-twitter').value.trim(),
-      whatsapp: document.getElementById('pef-whatsapp').value.trim()
-    };
-    // Handle photo if a new one was selected
-    const photoInput = document.getElementById('pef-photo');
-    if (photoInput.files && photoInput.files[0]) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        updated.photo = e.target.result;
-        saveProfileOverrides(member.id, updated);
-        renderCard();
-        renderHeader();
-      };
-      reader.readAsDataURL(photoInput.files[0]);
-    } else {
-      // Preserve existing photo override if any
-      const existing = getProfileOverrides(member.id);
-      if (existing && existing.photo) updated.photo = existing.photo;
-      saveProfileOverrides(member.id, updated);
-      renderCard();
-      renderHeader();
-    }
-  });
-
-  // Remove photo
-  const removePhotoBtn = document.getElementById('pef-remove-photo');
-  if (removePhotoBtn) {
-    removePhotoBtn.addEventListener('click', () => {
-      const base = CONFIG.team.find(t => t.id === member.id);
-      const existing = getProfileOverrides(member.id) || {};
-      existing.photo = '';
-      // If base had a photo, we need to explicitly store empty string as override
-      if (base && base.photo) {
-        saveProfileOverrides(member.id, Object.assign({}, member, existing));
-      } else {
-        delete existing.photo;
-        saveProfileOverrides(member.id, Object.assign({}, member, existing));
-      }
-      renderCard();
-    });
-  }
-
-  // Reset to defaults
-  const resetBtn = document.getElementById('pef-reset');
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-      localStorage.removeItem('profile_overrides_' + member.id);
-      renderCard();
-      renderHeader();
-    });
-  }
 }
 
 // -- Profile Modal --
@@ -1822,6 +1747,101 @@ function renderProfileList() {
       </div>
     </li>`;
   }).join('');
+
+  // Reset to list view
+  document.getElementById('profile-list-view').style.display = '';
+  document.getElementById('profile-edit-view').style.display = 'none';
+}
+
+function renderProfileEditForm() {
+  const member = getTeamMember(state.activeProfile) || CONFIG.team[0];
+  if (!member) return;
+  const el = document.getElementById('profile-edit-form-content');
+  el.innerHTML = `
+    <div class="pef-field"><label>Name</label><input type="text" id="pef-name" value="${(member.name || '').replace(/"/g, '&quot;')}"></div>
+    <div class="pef-field"><label>Title</label><input type="text" id="pef-title" value="${(member.title || '').replace(/"/g, '&quot;')}"></div>
+    <div class="pef-field"><label>Email</label><input type="email" id="pef-email" value="${(member.email || '').replace(/"/g, '&quot;')}"></div>
+    <div class="pef-field"><label>Phone</label><input type="tel" id="pef-phone" value="${(member.phone || '').replace(/"/g, '&quot;')}"></div>
+    <div class="pef-field"><label>LinkedIn URL</label><input type="url" id="pef-linkedin" value="${(member.linkedin || '').replace(/"/g, '&quot;')}"></div>
+    <div class="pef-field"><label>X / Twitter</label><input type="url" id="pef-twitter" value="${(member.twitter || '').replace(/"/g, '&quot;')}"></div>
+    <div class="pef-field"><label>WhatsApp</label><input type="tel" id="pef-whatsapp" value="${(member.whatsapp || '').replace(/"/g, '&quot;')}" placeholder="+1234567890"></div>
+    <div class="pef-field"><label>Profile Photo</label><input type="file" id="pef-photo" accept="image/*"></div>
+    ${member.photo ? '<div class="pef-field"><label></label><button class="btn-remove-photo" id="pef-remove-photo">Remove Photo</button></div>' : ''}
+    <div class="pef-actions">
+      <button class="pef-btn pef-btn-save" id="pef-save">Save Changes</button>
+      <button class="pef-btn pef-btn-cancel" id="pef-cancel">Cancel</button>
+      ${getProfileOverrides(member.id) ? '<button class="pef-btn pef-btn-reset" id="pef-reset">Reset to Default</button>' : ''}
+    </div>
+  `;
+
+  // Wire up save
+  document.getElementById('pef-save').addEventListener('click', () => {
+    const updated = {
+      name: document.getElementById('pef-name').value.trim(),
+      title: document.getElementById('pef-title').value.trim(),
+      email: document.getElementById('pef-email').value.trim(),
+      phone: document.getElementById('pef-phone').value.trim(),
+      linkedin: document.getElementById('pef-linkedin').value.trim(),
+      twitter: document.getElementById('pef-twitter').value.trim(),
+      whatsapp: document.getElementById('pef-whatsapp').value.trim()
+    };
+    const photoInput = document.getElementById('pef-photo');
+    if (photoInput.files && photoInput.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        updated.photo = e.target.result;
+        saveProfileOverrides(member.id, updated);
+        afterProfileSave();
+      };
+      reader.readAsDataURL(photoInput.files[0]);
+    } else {
+      const existing = getProfileOverrides(member.id);
+      if (existing && existing.photo) updated.photo = existing.photo;
+      saveProfileOverrides(member.id, updated);
+      afterProfileSave();
+    }
+  });
+
+  // Wire up cancel (back to list)
+  document.getElementById('pef-cancel').addEventListener('click', () => {
+    document.getElementById('profile-list-view').style.display = '';
+    document.getElementById('profile-edit-view').style.display = 'none';
+  });
+
+  // Wire up remove photo
+  const removePhotoBtn = document.getElementById('pef-remove-photo');
+  if (removePhotoBtn) {
+    removePhotoBtn.addEventListener('click', () => {
+      const base = CONFIG.team.find(t => t.id === member.id);
+      const existing = getProfileOverrides(member.id) || {};
+      existing.photo = '';
+      if (base && base.photo) {
+        saveProfileOverrides(member.id, Object.assign({}, member, existing));
+      } else {
+        delete existing.photo;
+        saveProfileOverrides(member.id, Object.assign({}, member, existing));
+      }
+      renderProfileEditForm();
+    });
+  }
+
+  // Wire up reset
+  const resetBtn = document.getElementById('pef-reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      localStorage.removeItem('profile_overrides_' + member.id);
+      afterProfileSave();
+    });
+  }
+}
+
+function afterProfileSave() {
+  renderHeader();
+  if (state.currentView === 'card') renderCard();
+  // Go back to list view in the modal
+  document.getElementById('profile-list-view').style.display = '';
+  document.getElementById('profile-edit-view').style.display = 'none';
+  renderProfileList();
 }
 
 /* == EVENT HANDLERS == */
@@ -1943,6 +1963,19 @@ document.getElementById('profile-list').addEventListener('click', (e) => {
     if (state.currentView === 'schedule') renderSchedule();
     if (state.currentView === 'card') renderCard();
   }
+});
+
+// Edit Profile button in profile modal
+document.getElementById('btn-open-edit-profile').addEventListener('click', () => {
+  document.getElementById('profile-list-view').style.display = 'none';
+  document.getElementById('profile-edit-view').style.display = '';
+  renderProfileEditForm();
+});
+
+// Back button from edit view to list view
+document.getElementById('pef-back').addEventListener('click', () => {
+  document.getElementById('profile-list-view').style.display = '';
+  document.getElementById('profile-edit-view').style.display = 'none';
 });
 
 // (Card person pills removed \u2014 My Card shows logged-in user only)
