@@ -2117,7 +2117,8 @@ function pushLeadToSheet(lead) {
     } else {
       const body = await resp.json().catch(() => ({}));
       console.warn('Sheet push failed:', resp.status, body);
-      showToast('Sheet sync failed: ' + (body.error || resp.status), 'error');
+      const detail = body.detail ? (' — ' + body.detail.slice(0, 100)) : '';
+      showToast('Sheet sync: ' + (body.error || 'error') + ' (HTTP ' + (body.status || resp.status) + ')' + detail, 'error', 8000);
     }
   }).catch(err => {
     console.warn('Sheet push failed:', err.message || err);
