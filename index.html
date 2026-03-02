@@ -1045,8 +1045,8 @@ const CONFIG = {
       "type": "booth",
       "location": "Hall 3, Stand 3M31",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Full day booth operations with Deutsche Telekom partnership showcase"
     },
@@ -1058,8 +1058,8 @@ const CONFIG = {
       "type": "meeting",
       "location": "Deutsche Telekom",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Major announcement of partnership - high visibility moment"
     },
@@ -1071,8 +1071,8 @@ const CONFIG = {
       "type": "session",
       "location": "Hall 3, Booth 3M31",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Abdu Mudesir presenting - critical networking opportunity"
     },
@@ -1084,8 +1084,8 @@ const CONFIG = {
       "type": "session",
       "location": "Turing Stage, Hall 6",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "High priority session - directly relevant to our voice security positioning"
     },
@@ -1097,8 +1097,8 @@ const CONFIG = {
       "type": "booth",
       "location": "Hall 3, Stand 3M31",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Continue booth demos and lead generation"
     },
@@ -1110,8 +1110,8 @@ const CONFIG = {
       "type": "session",
       "location": "GSMA Summits Stage",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Critical priority - key security industry gathering with relevant stakeholders"
     },
@@ -1123,8 +1123,8 @@ const CONFIG = {
       "type": "session",
       "location": "Johnson Stage",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Relevant AI security content"
     },
@@ -1136,8 +1136,8 @@ const CONFIG = {
       "type": "booth",
       "location": "Hall 3, Stand 3M31",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Continue partnership showcase and networking"
     },
@@ -1149,8 +1149,8 @@ const CONFIG = {
       "type": "session",
       "location": "Lamarr Stage",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Critical priority - social engineering directly relates to voice security threats"
     },
@@ -1162,8 +1162,8 @@ const CONFIG = {
       "type": "session",
       "location": "Marconi Stage",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Critical priority - voice design and AI agents directly relevant to our technology"
     },
@@ -1175,8 +1175,8 @@ const CONFIG = {
       "type": "booth",
       "location": "Hall 3, Stand 3M31",
       "assignees": [
-        "zali",
-        "wsmith"
+        "zohaib",
+        "will"
       ],
       "notes": "Final day for demos, content capture, and lead follow-up. Early close at 4pm."
     }
@@ -2069,23 +2069,35 @@ function saveLeads(leads) {
 function pushLeadToSheet(lead) {
   const url = CONFIG.googleSheetUrl;
   if (!url) return;
-  // Google Apps Script redirects POST responses (302), causing CORS failures
-  // in default mode. Use no-cors so the POST body reaches the server even
-  // though the response is opaque (fine for fire-and-forget).
+  const payload = JSON.stringify(lead);
+
+  // Try sendBeacon first (most reliable for fire-and-forget to Apps Script)
+  if (navigator.sendBeacon) {
+    const sent = navigator.sendBeacon(url, new Blob([payload], { type: 'text/plain;charset=utf-8' }));
+    if (sent) {
+      markLeadSynced(lead.id);
+      return;
+    }
+  }
+
+  // Fallback: fetch with no-cors
   fetch(url, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(lead)
+    body: payload,
+    redirect: 'follow'
   }).then(() => {
-    // With no-cors the response is opaque, but the POST was sent.
-    // Optimistically mark as synced.
-    const leads = getLocalLeads();
-    const match = leads.find(l => l.id === lead.id);
-    if (match) { match._synced = true; saveLocalLeads(leads); }
+    markLeadSynced(lead.id);
   }).catch(err => {
     console.warn('Lead push failed (will retry on next sync):', err.message || err);
   });
+}
+
+function markLeadSynced(leadId) {
+  const leads = getLocalLeads();
+  const match = leads.find(l => l.id === leadId);
+  if (match) { match._synced = true; saveLocalLeads(leads); }
 }
 
 // Pull all leads from Google Sheet and merge with local
@@ -2114,18 +2126,11 @@ async function syncLeadsFromSheet() {
       }
     }
 
-    // Push any unsynced local leads to Sheet (one at a time)
+    // Push any unsynced local leads to Sheet
     const unsynced = local.filter(l => !l._synced);
     for (const lead of unsynced) {
-      try {
-        await fetch(url, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(lead)
-        });
-        lead._synced = true;
-      } catch { /* will retry next sync */ }
+      pushLeadToSheet(lead);
+      lead._synced = true;
     }
 
     if (added > 0 || unsynced.length > 0) {
@@ -2196,7 +2201,6 @@ const leadForm = document.getElementById('lead-form');
 document.getElementById('btn-add-lead-manual').addEventListener('click', () => {
   clearLeadForm();
   leadForm.classList.add('open'); history.pushState({ modal: 'leadform' }, '', '');
-  history.pushState({ modal: 'leadform' }, '', '');
 });
 
 document.getElementById('lf-cancel').addEventListener('click', () => {
@@ -2647,18 +2651,24 @@ updateOnlineStatus();
 /* == INSTALL PROMPT == */
 let deferredInstallPrompt = null;
 const installBanner = document.getElementById('install-banner');
-
-// Only show if not already installed (standalone) and not dismissed this session
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
   if (!isStandalone && !sessionStorage.getItem('install_dismissed')) {
-    // Delay showing to not interrupt initial app load
     setTimeout(() => installBanner.classList.add('show'), 3000);
   }
 });
+
+// On iOS, beforeinstallprompt never fires. Show a manual instruction banner instead.
+if (isIOS && !isStandalone && !sessionStorage.getItem('install_dismissed')) {
+  document.getElementById('install-btn').textContent = 'Got it';
+  document.querySelector('.install-banner-text small').textContent =
+    'Tap the share button, then "Add to Home Screen"';
+  setTimeout(() => installBanner.classList.add('show'), 3000);
+}
 
 document.getElementById('install-btn').addEventListener('click', () => {
   if (deferredInstallPrompt) {
@@ -2667,6 +2677,10 @@ document.getElementById('install-btn').addEventListener('click', () => {
       deferredInstallPrompt = null;
       installBanner.classList.remove('show');
     });
+  } else {
+    // iOS or no prompt available — just dismiss
+    installBanner.classList.remove('show');
+    sessionStorage.setItem('install_dismissed', '1');
   }
 });
 
