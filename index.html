@@ -345,20 +345,6 @@
       padding: 12px 28px; border-radius: 24px; font-size: 14px;
       font-weight: 700; text-decoration: none; border: none; cursor: pointer;
     }
-    .event-url-edit {
-      display: flex; align-items: center; gap: 6px; margin: 0 auto 16px;
-      max-width: 380px; padding: 0 10px;
-    }
-    .event-url-edit input {
-      flex: 1; font-size: 12px; padding: 8px 10px; border-radius: 8px;
-      border: 1.5px solid var(--border); background: var(--surface);
-      color: var(--text); font-family: inherit;
-    }
-    .event-url-edit button {
-      flex-shrink: 0; padding: 8px 12px; border-radius: 8px; border: none;
-      background: var(--accent); color: white; font-size: 12px;
-      font-weight: 600; cursor: pointer;
-    }
 
     /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ My Card ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
     .card-section { padding-top: 8px; }
@@ -1532,7 +1518,7 @@ function showPlayerModal(idx) {
 
 // Event QR
 function getEventUrl() {
-  return localStorage.getItem('event_landing_url') || CONFIG.event.landingPageUrl || '';
+  return CONFIG.event.landingPageUrl || '';
 }
 function renderEventQR() {
   const el = document.getElementById('event-qr-content');
@@ -1540,30 +1526,22 @@ function renderEventQR() {
   el.innerHTML = `
     <div class="event-logo">${CONFIG.company.name}</div>
     <div class="event-at">at ${CONFIG.event.name}</div>
-    <div class="event-url-edit">
-      <input type="url" id="event-url-input" value="${url}" placeholder="https://...">
-      <button id="event-url-save">Update</button>
-    </div>
     <div class="qr-card" id="event-qr-canvas-wrap"></div>
     <div class="event-tagline">${CONFIG.event.tagline}</div>
     <div class="event-description">${CONFIG.event.description}</div>
-    <button class="event-cta" id="event-cta-btn">Visit Landing Page</button>
+    ${url ? `<button class="event-cta" id="event-cta-btn">Visit Landing Page</button>` : ''}
   `;
   const qrSize = Math.min(220, window.innerWidth - 100);
   const canvas = generateQR(url, qrSize);
   if (canvas) {
     document.getElementById('event-qr-canvas-wrap').appendChild(canvas);
-  } else {
+  } else if (url) {
     document.getElementById('event-qr-canvas-wrap').innerHTML = `<p style="padding:20px;color:var(--text-secondary);font-size:13px;">QR could not render.<br>${url}</p>`;
+  } else {
+    document.getElementById('event-qr-canvas-wrap').innerHTML = `<p style="padding:20px;color:var(--text-secondary);font-size:13px;">No landing page URL configured.<br>Set it in the admin panel.</p>`;
   }
-  document.getElementById('event-cta-btn').addEventListener('click', () => window.open(getEventUrl(), '_blank'));
-  document.getElementById('event-url-save').addEventListener('click', () => {
-    const newUrl = document.getElementById('event-url-input').value.trim();
-    if (newUrl) {
-      localStorage.setItem('event_landing_url', newUrl);
-      renderEventQR();
-    }
-  });
+  const ctaBtn = document.getElementById('event-cta-btn');
+  if (ctaBtn) ctaBtn.addEventListener('click', () => window.open(url, '_blank'));
 }
 
 // ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ My Card ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
